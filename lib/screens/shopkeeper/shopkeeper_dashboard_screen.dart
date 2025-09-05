@@ -18,6 +18,7 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
     with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late AnimationController _slideController;
+  int _ordersToday = 0;
 
   @override
   void initState() {
@@ -35,6 +36,8 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
 
     _fadeController.forward();
     _slideController.forward();
+    
+    _loadOrdersToday();
   }
 
   @override
@@ -42,6 +45,25 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
     _fadeController.dispose();
     _slideController.dispose();
     super.dispose();
+  }
+
+  void _loadOrdersToday() {
+    final today = DateTime.now();
+    final startOfDay = DateTime(today.year, today.month, today.day);
+    final endOfDay = startOfDay.add(const Duration(days: 1));
+
+    FirebaseFirestore.instance
+        .collection('orders')
+        .where('orderDate', isGreaterThanOrEqualTo: startOfDay)
+        .where('orderDate', isLessThan: endOfDay)
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted) {
+        setState(() {
+          _ordersToday = snapshot.docs.length;
+        });
+      }
+    });
   }
 
   @override
@@ -162,7 +184,7 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
                     const SizedBox(width: 16),
                     _PastelStatCard(
                       title: 'Orders Today',
-                      value: '18',
+                      value: '$_ordersToday',
                       color: const Color(0xFFF9E79F),
                       icon: Icons.shopping_cart_rounded,
                     ),
@@ -531,12 +553,336 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
   }
 
   void _showOrders(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Opening Orders...', style: GoogleFonts.poppins()),
-        backgroundColor: const Color(0xFFD6EAF8),
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.9,
+        decoration: const BoxDecoration(
+          color: Color(0xFFF7F6F2),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(32),
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 16),
+              width: 50,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2.5),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Text(
+                    'Customer Orders',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF22223B),
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                    color: Colors.grey[600],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: _buildOrdersList(),
+            ),
+          ],
+        ),
       ),
     );
+  }
+
+  Widget _buildOrdersList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('orders')
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFB5C7F7)),
+            ),
+          );
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text(
+              'Error loading orders: ${snapshot.error}',
+              style: GoogleFonts.poppins(color: Colors.red),
+            ),
+          );
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.shopping_cart_outlined,
+                  size: 64,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No orders yet',
+                  style: GoogleFonts.poppins(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Orders from customers will appear here',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final orders = snapshot.data!.docs;
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          itemCount: orders.length,
+          itemBuilder: (context, index) {
+            final order = orders[index].data() as Map<String, dynamic>;
+            return _buildOrderCard(order);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildOrderCard(Map<String, dynamic> order) {
+    final orderId = order['orderId'] ?? 'N/A';
+    final customerName = order['userName'] ?? 'Unknown Customer';
+    final customerEmail = order['userEmail'] ?? 'N/A';
+    final totalAmount = order['finalAmount'] ?? 0.0;
+    final orderStatus = order['orderStatus'] ?? 'pending';
+    final orderDate = order['orderDate'] != null 
+        ? (order['orderDate'] as Timestamp).toDate()
+        : DateTime.now();
+    final items = order['items'] as List<dynamic>? ?? [];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: _getStatusColor(orderStatus).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  orderStatus.toUpperCase(),
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: _getStatusColor(orderStatus),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '₹${totalAmount.toStringAsFixed(2)}',
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF22223B),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Order #$orderId',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF22223B),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Customer: $customerName',
+            style: GoogleFonts.poppins(
+              fontSize: 14,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Email: $customerEmail',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Date: ${_formatDate(orderDate)}',
+            style: GoogleFonts.poppins(
+              fontSize: 12,
+              color: Colors.grey[600],
+            ),
+          ),
+          if (items.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Items (${items.length}):',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF22223B),
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...items.take(3).map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Text(
+                '• ${item['name'] ?? 'Unknown Product'} (Qty: ${item['quantity'] ?? 1})',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey[700],
+                ),
+              ),
+            )),
+            if (items.length > 3)
+              Text(
+                '... and ${items.length - 3} more items',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+          ],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _updateOrderStatus(orderId, 'confirmed'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFB5C7F7),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Confirm',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _updateOrderStatus(orderId, 'shipped'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF9E79F),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text(
+                    'Ship',
+                    style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'confirmed':
+        return Colors.blue;
+      case 'shipped':
+        return Colors.purple;
+      case 'delivered':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _updateOrderStatus(String orderId, String newStatus) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('orders')
+          .doc(orderId)
+          .update({
+        'orderStatus': newStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Order status updated to $newStatus', style: GoogleFonts.poppins()),
+          backgroundColor: const Color(0xFFB5C7F7),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating order: $e', style: GoogleFonts.poppins()),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _showEcoProducts(BuildContext context) {
@@ -2051,7 +2397,7 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
                     child: _buildStatItem('Products', '${store['products'] ?? 0}', Icons.inventory_rounded, const Color(0xFFB5C7F7)),
                   ),
                   Expanded(
-                    child: _buildStatItem('Orders', '${store['ordersToday'] ?? 0}', Icons.shopping_cart_rounded, const Color(0xFFF9E79F)),
+                    child: _buildStatItem('Orders', '$_ordersToday', Icons.shopping_cart_rounded, const Color(0xFFF9E79F)),
                   ),
                   Expanded(
                     child: _buildStatItem('Revenue', '₹${((store['revenue'] ?? 0) / 1000).toStringAsFixed(1)}K', Icons.currency_rupee_rounded, const Color(0xFFD6EAF8)),
