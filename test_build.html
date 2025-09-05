@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Flutter Web Build Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f0f0f0;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Flutter Web Build Test</h1>
+        <p>This page tests if the Flutter web build files are accessible and valid.</p>
+        
+        <h2>File Tests:</h2>
+        <div id="results"></div>
+        
+        <h2>Manual Test:</h2>
+        <p>If you see this page, the web server is working. Try accessing:</p>
+        <ul>
+            <li><a href="build/web/index.html" target="_blank">Flutter App (build/web/index.html)</a></li>
+            <li><a href="build/web/flutter_bootstrap.js" target="_blank">Flutter Bootstrap JS</a></li>
+            <li><a href="build/web/manifest.json" target="_blank">Manifest JSON</a></li>
+        </ul>
+    </div>
+
+    <script>
+        const filesToTest = [
+            'build/web/index.html',
+            'build/web/flutter_bootstrap.js',
+            'build/web/main.dart.js',
+            'build/web/manifest.json',
+            'build/web/flutter.js'
+        ];
+
+        const resultsDiv = document.getElementById('results');
+
+        async function testFile(url) {
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    return {
+                        success: true,
+                        contentType: contentType,
+                        size: response.headers.get('content-length') || 'unknown'
+                    };
+                } else {
+                    return {
+                        success: false,
+                        error: `HTTP ${response.status}: ${response.statusText}`
+                    };
+                }
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message
+                };
+            }
+        }
+
+        async function runTests() {
+            for (const file of filesToTest) {
+                const result = await testFile(file);
+                const div = document.createElement('div');
+                div.innerHTML = `
+                    <strong>${file}:</strong> 
+                    <span class="${result.success ? 'success' : 'error'}">
+                        ${result.success ? '✓ OK' : '✗ ERROR'}
+                    </span>
+                    ${result.success ? `(${result.contentType}, ${result.size} bytes)` : `(${result.error})`}
+                `;
+                resultsDiv.appendChild(div);
+            }
+        }
+
+        runTests();
+    </script>
+</body>
+</html>
+
+
