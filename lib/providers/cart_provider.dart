@@ -83,9 +83,16 @@ class CartProvider with ChangeNotifier {
     required Color color,
     required String category,
     required double carbonFootprint,
+    int? availableStock,
   }) {
     if (_cartItems.containsKey(productId)) {
-      // If item already exists, increase quantity
+      // If item already exists, check stock before increasing quantity
+      final currentQuantity = _cartItems[productId]!.quantity;
+      if (availableStock != null && currentQuantity >= availableStock) {
+        print('❌ Cannot add more items. Stock limit reached: $availableStock');
+        return;
+      }
+      
       _cartItems.update(
         productId,
         (existingCartItem) => CartItem(
@@ -101,6 +108,11 @@ class CartProvider with ChangeNotifier {
         ),
       );
     } else {
+      // Check stock before adding new item
+      if (availableStock != null && availableStock <= 0) {
+        print('❌ Cannot add item. Out of stock: $availableStock');
+        return;
+      }
       // Add new item to cart
       _cartItems.putIfAbsent(
         productId,
@@ -151,8 +163,14 @@ class CartProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void updateQuantity(String productId, int newQuantity) {
+  void updateQuantity(String productId, int newQuantity, {int? availableStock}) {
     if (!_cartItems.containsKey(productId) || newQuantity <= 0) {
+      return;
+    }
+
+    // Check stock limit
+    if (availableStock != null && newQuantity > availableStock) {
+      print('❌ Cannot update quantity. Stock limit: $availableStock, requested: $newQuantity');
       return;
     }
 

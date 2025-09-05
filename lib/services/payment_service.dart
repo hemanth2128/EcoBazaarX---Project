@@ -90,6 +90,16 @@ class PaymentService {
       // Save order to Firestore
       await _ordersCollection.doc(orderId).set(orderData);
 
+      // Update product stock for each item
+      for (var item in cartItems) {
+        final productId = item['productId'] as String?;
+        final quantity = (item['quantity'] ?? 1) as int;
+        
+        if (productId != null) {
+          await _updateProductStock(productId, quantity);
+        }
+      }
+
       // Create user order reference
       await _userOrdersCollection.add({
         'userId': userId,
@@ -113,6 +123,33 @@ class PaymentService {
         'success': false,
         'message': 'Failed to create order: ${e.toString()}',
       };
+    }
+  }
+
+  // Update product stock after order
+  static Future<void> _updateProductStock(String productId, int orderedQuantity) async {
+    try {
+      final productDoc = await _firestore.collection('products').doc(productId).get();
+      
+      if (productDoc.exists) {
+        final productData = productDoc.data() as Map<String, dynamic>;
+        final currentStock = (productData['quantity'] ?? 0) as int;
+        final newStock = currentStock - orderedQuantity;
+        
+        // Ensure stock doesn't go below 0
+        final finalStock = newStock < 0 ? 0 : newStock;
+        
+        await _firestore.collection('products').doc(productId).update({
+          'quantity': finalStock,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+        
+        print('✅ Stock updated for product $productId: $currentStock -> $finalStock (ordered: $orderedQuantity)');
+      } else {
+        print('❌ Product not found: $productId');
+      }
+    } catch (e) {
+      print('❌ Error updating stock for product $productId: $e');
     }
   }
 

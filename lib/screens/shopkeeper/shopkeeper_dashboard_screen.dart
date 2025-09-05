@@ -885,6 +885,110 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
     }
   }
 
+  void _showUpdateStockDialog(BuildContext context, Map<String, dynamic> product) {
+    final TextEditingController stockController = TextEditingController(
+      text: product['quantity']?.toString() ?? '0',
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Update Stock',
+          style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Product: ${product['name']}',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Current Stock: ${product['quantity'] ?? 0}',
+              style: GoogleFonts.poppins(color: Colors.grey[600]),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: stockController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'New Stock Quantity',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                prefixIcon: const Icon(Icons.inventory_rounded),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.poppins(color: Colors.grey[600]),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final newStock = int.tryParse(stockController.text);
+              if (newStock != null && newStock >= 0) {
+                await _updateProductStock(product['id'], newStock);
+                Navigator.pop(context);
+                Navigator.pop(context); // Close manage stock dialog
+                _showManageStock(context); // Refresh the list
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Please enter a valid stock quantity', style: GoogleFonts.poppins()),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFB5C7F7),
+              foregroundColor: Colors.white,
+            ),
+            child: Text(
+              'Update',
+              style: GoogleFonts.poppins(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateProductStock(String productId, int newStock) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('products')
+          .doc(productId)
+          .update({
+        'quantity': newStock,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Stock updated successfully!', style: GoogleFonts.poppins()),
+          backgroundColor: const Color(0xFFB5C7F7),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error updating stock: $e', style: GoogleFonts.poppins()),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _showEcoProducts(BuildContext context) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -2671,6 +2775,9 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
                         case 'edit':
                           _showEditProduct(context, product);
                           break;
+                        case 'stock':
+                          _showUpdateStockDialog(context, product);
+                          break;
                         case 'delete':
                           _showDeleteProductDialog(context, product);
                           break;
@@ -2689,6 +2796,16 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
                             Icon(Icons.edit, color: const Color(0xFFB5C7F7)),
                             const SizedBox(width: 8),
                             Text('Edit', style: GoogleFonts.poppins()),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'stock',
+                        child: Row(
+                          children: [
+                            Icon(Icons.inventory_rounded, color: const Color(0xFFD6EAF8)),
+                            const SizedBox(width: 8),
+                            Text('Update Stock', style: GoogleFonts.poppins()),
                           ],
                         ),
                       ),
