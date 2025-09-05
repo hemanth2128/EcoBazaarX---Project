@@ -28,27 +28,41 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   
     // Get real active stores count from centralized store data
   int get _activeStores {
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-    return storeProvider.getStoresByStatus(true).length;
+    try {
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      return storeProvider.getStoresByStatus(true).length;
+    } catch (e) {
+      print('Error getting active stores: $e');
+      return 0;
+    }
   }
 
   // Get total stores count from centralized store data
   int get _totalStores {
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-    return storeProvider.allStores.length;
+    try {
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      return storeProvider.allStores.length;
+    } catch (e) {
+      print('Error getting total stores: $e');
+      return 0;
+    }
   }
   
-  // Get real total users count from SpringAuthProvider
-  int get _totalUsers => SpringAuthProvider.allUsers.length;
+  // Get real total users count from Firestore data
+  int get _totalUsers => _users.length;
   
   // Get new users registered today
   int get _newUsersToday {
     final today = DateTime.now();
-    return SpringAuthProvider.allUsers.where((user) {
-      final joinDate = DateTime.parse(user['joinDate']);
-      return joinDate.year == today.year && 
-             joinDate.month == today.month && 
-             joinDate.day == today.day;
+    return _users.where((user) {
+      try {
+        final joinDate = DateTime.parse(user['joinDate']);
+        return joinDate.year == today.year && 
+               joinDate.month == today.month && 
+               joinDate.day == today.day;
+      } catch (e) {
+        return false;
+      }
     }).length;
   }
   
@@ -80,26 +94,63 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     },
   ];
   
-  // Store categories with real-time counts
-  final Map<String, int> _storeCategories = {
-    'Food & Beverages': 35,
-    'Clothing & Fashion': 28,
-    'Electronics': 18,
-    'Home & Garden': 19,
-  };
   
-     // User management data - now dynamically loaded from SpringAuthProvider
-   List<Map<String, dynamic>> get _users {
-     final allUsers = SpringAuthProvider.allUsers;
-     return allUsers.map((user) => {
-       'id': user['id'],
-       'name': user['name'],
-       'email': user['email'],
-       'role': _getRoleDisplayName(user['role']),
-       'status': user['status'],
-       'joinDate': user['joinDate'],
-     }).toList();
-   }
+     // User management data - now loaded from Firestore for real-time updates
+   List<Map<String, dynamic>> _users = [];
+   bool _isLoadingUsers = false;
+   
+     // Load users from Firestore
+  Future<void> _loadUsersFromFirestore() async {
+    setState(() {
+      _isLoadingUsers = true;
+    });
+    
+    try {
+      final QuerySnapshot snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .orderBy('createdAt', descending: true)
+          .get();
+      
+      _users = snapshot.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return {
+          'id': doc.id,
+          'name': data['name'] ?? 'Unknown',
+          'email': data['email'] ?? '',
+          'role': _getRoleDisplayName(data['role']),
+          'status': data['status'] ?? 'Active',
+          'joinDate': data['joinDate']?.toString() ?? DateTime.now().toIso8601String().split('T')[0],
+          'createdAt': data['createdAt'],
+        };
+      }).toList();
+      
+      setState(() {
+        _isLoadingUsers = false;
+      });
+    } catch (e) {
+      print('Error loading users from Firestore: $e');
+      setState(() {
+        _isLoadingUsers = false;
+      });
+    }
+  }
+
+  // Initialize products from ProductProvider
+  Future<void> _initializeProducts() async {
+    try {
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      await productProvider.initializeProducts();
+      print('Products initialized: ${productProvider.allProducts.length} products');
+      
+      // Debug: Print categories and their product counts
+      for (String category in productProvider.availableCategories) {
+        final count = productProvider.getProductsByCategory(category).length;
+        print('Category "$category": $count products');
+      }
+    } catch (e) {
+      print('Error initializing products: $e');
+    }
+  }
   
   // Filter variables
   String _currentFilter = 'All';
@@ -150,13 +201,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     _fadeController.forward();
     _slideController.forward();
     
+    // Load users from Firestore
+    _loadUsersFromFirestore();
+    
     // Start real-time updates
     _startRealTimeUpdates();
     
     // Load sample carbon data for demonstration
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final carbonProvider = Provider.of<CarbonTrackingProvider>(context, listen: false);
-      carbonProvider.loadSampleData();
+      try {
+        final carbonProvider = Provider.of<CarbonTrackingProvider>(context, listen: false);
+        carbonProvider.loadSampleData();
+        
+        // Initialize products after build is complete
+        _initializeProducts();
+      } catch (e) {
+        print('Error loading carbon data: $e');
+      }
     });
     
     // Debug: Print user count
@@ -171,72 +232,84 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   }
   
   void _startRealTimeUpdates() {
-    _realTimeTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+    _realTimeTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
       if (mounted) {
         setState(() {
           // Update real-time data with realistic increments
-          // _totalUsers is now real-time from SpringAuthProvider
-          // _activeStores is now real-time from stores data
           _activeSessions += Random().nextInt(10) - 5;
           _systemUptime = 99.8 + (Random().nextDouble() * 0.2);
           
           // Update store analytics in real-time
           _updateStoreAnalytics();
         });
+        
+        // Refresh users from Firestore every 30 seconds
+        _loadUsersFromFirestore();
+        
+        // Refresh products every 30 seconds
+        _initializeProducts();
       }
     });
   }
   
   void _updateStoreAnalytics() {
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
-    bool hasUpdates = false;
+    try {
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+      bool hasUpdates = false;
     
     // Update store performance randomly
     for (var store in storeProvider.allStores) {
       // Randomly update performance
       if (Random().nextBool()) {
-        store['performance'] = (store['performance'] + (Random().nextDouble() * 0.1 - 0.05)).clamp(0.0, 1.0);
+        final currentPerformance = (store['performance'] as num?)?.toDouble() ?? 0.5;
+        store['performance'] = (currentPerformance + (Random().nextDouble() * 0.1 - 0.05)).clamp(0.0, 1.0);
         hasUpdates = true;
       }
       
       // Randomly update revenue
       if (Random().nextBool()) {
-        store['revenue'] += Random().nextInt(1000) - 500;
-        store['revenue'] = store['revenue'].clamp(0, 100000);
+        final currentRevenue = (store['revenue'] as num?)?.toInt() ?? 0;
+        final newRevenue = currentRevenue + Random().nextInt(1000) - 500;
+        store['revenue'] = newRevenue.clamp(0, 100000);
         hasUpdates = true;
       }
       
       // Randomly update products count
       if (Random().nextBool()) {
-        store['products'] += Random().nextInt(5) - 2;
-        store['products'] = store['products'].clamp(0, 500);
+        final currentProducts = (store['products'] as num?)?.toInt() ?? 0;
+        final newProducts = currentProducts + Random().nextInt(5) - 2;
+        store['products'] = newProducts.clamp(0, 500);
         hasUpdates = true;
       }
       
       // Update online users
       if (Random().nextBool()) {
-        store['onlineUsers'] += Random().nextInt(5) - 2;
-        store['onlineUsers'] = store['onlineUsers'].clamp(0, 100);
+        final currentOnlineUsers = (store['onlineUsers'] as num?)?.toInt() ?? 0;
+        final newOnlineUsers = currentOnlineUsers + Random().nextInt(5) - 2;
+        store['onlineUsers'] = newOnlineUsers.clamp(0, 100);
         hasUpdates = true;
       }
       
       // Update orders today
       if (Random().nextBool()) {
-        store['ordersToday'] += Random().nextInt(3);
+        final currentOrders = (store['ordersToday'] as num?)?.toInt() ?? 0;
+        store['ordersToday'] = currentOrders + Random().nextInt(3);
         hasUpdates = true;
       }
       
       // Update carbon saved
       if (Random().nextBool()) {
-        store['carbonSaved'] += Random().nextDouble() * 0.5;
-        store['carbonSaved'] = store['carbonSaved'].clamp(0.0, 50.0);
+        final currentCarbon = (store['carbonSaved'] as num?)?.toDouble() ?? 0.0;
+        final newCarbon = currentCarbon + Random().nextDouble() * 0.5;
+        store['carbonSaved'] = newCarbon.clamp(0.0, 50.0);
         hasUpdates = true;
       }
       
       // Update trend based on performance
-      if (store['performance'] > 0.8) {
+      final performance = (store['performance'] as num?)?.toDouble() ?? 0.5;
+      if (performance > 0.8) {
         store['trend'] = 'up';
-      } else if (store['performance'] < 0.6) {
+      } else if (performance < 0.6) {
         store['trend'] = 'down';
       } else {
         store['trend'] = 'stable';
@@ -262,13 +335,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       store['lastUpdated'] = DateTime.now();
     }
     
-    // Update store categories randomly
-    for (var category in _storeCategories.keys) {
-      if (Random().nextBool()) {
-        _storeCategories[category] = (_storeCategories[category]! + Random().nextInt(3) - 1).clamp(0, 100);
-        hasUpdates = true;
-      }
-    }
+    // Store categories are now dynamic from ProductProvider, no need to update randomly
+    // The categories will update automatically when products change
     
     // Add new store activities
     _addStoreActivity();
@@ -283,10 +351,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         setState(() {});
       }
     }
+    } catch (e) {
+      print('Error updating store analytics: $e');
+    }
   }
   
   void _addNewStore() {
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    try {
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
     // Very low probability to add a new store (0.1% chance every 5 seconds)
           if (Random().nextDouble() < 0.001 && storeProvider.allStores.length < 20) {
       List<String> storeNames = [
@@ -329,10 +401,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         'type': 'milestone',
       });
     }
+    } catch (e) {
+      print('Error adding new store: $e');
+    }
   }
   
   void _addStoreActivity() {
-    final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    try {
+      final storeProvider = Provider.of<StoreProvider>(context, listen: false);
     List<String> actions = [
       'New order received',
       'Product inventory updated',
@@ -357,6 +433,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       };
       
       _storeActivities.insert(0, newActivity);
+    }
+    } catch (e) {
+      print('Error adding store activity: $e');
     }
   }
 
@@ -479,18 +558,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   children: [
                     _PastelStatCard(
                       title: 'Total Users',
-                      value: _totalUsers.toStringAsFixed(0),
+                      value: _totalUsers.toString(),
                       color: const Color(0xFFB5C7F7),
                       icon: Icons.people_rounded,
-                      isLive: true,
                     ),
                     const SizedBox(width: 16),
                     _PastelStatCard(
                       title: 'Active Stores',
-                      value: _activeStores.toStringAsFixed(0),
+                      value: _activeStores.toString(),
                       color: const Color(0xFFF9E79F),
                       icon: Icons.store_rounded,
-                      isLive: true,
                     ),
                   ],
                 ),
@@ -504,9 +581,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   children: [
                     Consumer<CarbonTrackingProvider>(
                       builder: (context, carbonProvider, child) {
+                        final carbonSaved = carbonProvider.totalCarbonSaved ?? 0.0;
                         return _PastelStatCard(
                           title: 'Carbon Saved',
-                          value: '${carbonProvider.totalCarbonSaved.toStringAsFixed(1)}kg',
+                          value: '${carbonSaved.toStringAsFixed(1)}kg',
                           color: const Color(0xFFD6EAF8),
                           icon: Icons.eco_rounded,
                         );
@@ -515,9 +593,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     const SizedBox(width: 16),
                     Consumer<CarbonTrackingProvider>(
                       builder: (context, carbonProvider, child) {
+                        final revenue = carbonProvider.totalRevenue ?? 0.0;
                         return _PastelStatCard(
                           title: 'Revenue',
-                          value: '₹${(carbonProvider.totalRevenue / 100000).toStringAsFixed(1)}L',
+                          value: '₹${(revenue / 100000).toStringAsFixed(1)}L',
                           color: const Color(0xFFE8D5C4),
                           icon: Icons.currency_rupee_rounded,
                         );
@@ -548,6 +627,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 child: Column(
                   children: [
+                    // First row - 3 buttons
                     Row(
                       children: [
                         Expanded(
@@ -558,20 +638,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             onTap: () => _showUserManagement(context),
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _PastelActionCard(
-                            icon: Icons.store_rounded,
-                            label: 'Store Analytics',
-                            color: const Color(0xFFF9E79F),
-                            onTap: () => _showStoreAnalytics(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _PastelActionCard(
                             icon: Icons.add_business_rounded,
@@ -580,30 +647,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             onTap: () => _showAddStoreDialog(context),
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _PastelActionCard(
-                            icon: Icons.eco_rounded,
-                            label: 'Carbon Reports',
-                            color: const Color(0xFFD6EAF8),
-                            onTap: () => _showCarbonReports(context),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Second row of action cards
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  children: [
-                    Row(
-                      children: [
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _PastelActionCard(
                             icon: Icons.inventory_rounded,
@@ -612,18 +656,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             onTap: () => _showProductManagement(context),
                           ),
                         ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _PastelActionCard(
-                            icon: Icons.analytics_rounded,
-                            label: 'Product Analytics',
-                            color: const Color(0xFFF9E79F),
-                            onTap: () => _showProductAnalytics(context),
-                          ),
-                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
+                    // Second row - 3 buttons
                     Row(
                       children: [
                         Expanded(
@@ -634,7 +670,39 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             onTap: () => _showCategoryManagement(context),
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _PastelActionCard(
+                            icon: Icons.store_rounded,
+                            label: 'Store Analytics',
+                            color: const Color(0xFFF9E79F),
+                            onTap: () => _showStoreAnalytics(context),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _PastelActionCard(
+                            icon: Icons.eco_rounded,
+                            label: 'Carbon Reports',
+                            color: const Color(0xFFD6EAF8),
+                            onTap: () => _showCarbonReports(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Third row - 2 buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _PastelActionCard(
+                            icon: Icons.analytics_rounded,
+                            label: 'Product Analytics',
+                            color: const Color(0xFFF9E79F),
+                            onTap: () => _showProductAnalytics(context),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: _PastelActionCard(
                             icon: Icons.add_box_rounded,
@@ -643,6 +711,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             onTap: () => _showAddProductAdmin(context),
                           ),
                         ),
+                        const SizedBox(width: 12),
+                        const Expanded(child: SizedBox()), // Empty space to maintain alignment
                       ],
                     ),
                   ],
@@ -980,6 +1050,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
             children: [
               Expanded(
                 child: TextField(
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
                   decoration: InputDecoration(
                     hintText: 'Search users...',
                     prefixIcon: const Icon(Icons.search),
@@ -991,7 +1066,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ),
               const SizedBox(width: 16),
               ElevatedButton.icon(
-                onPressed: () {},
+                onPressed: () => _showUserFilterDialog(context),
                 icon: const Icon(Icons.filter_list),
                 label: const Text('Filter'),
                 style: ElevatedButton.styleFrom(
@@ -999,39 +1074,82 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   foregroundColor: Colors.white,
                 ),
               ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () => _loadUsersFromFirestore(),
+                icon: const Icon(Icons.refresh),
+                label: const Text('Refresh'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1976D2),
+                  foregroundColor: Colors.white,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
 
-          // User List
-          _buildUserCard(
-            'John Doe',
-            'john@example.com',
-            'Customer',
-            'Active',
-            Colors.green,
-          ),
-          _buildUserCard(
-            'Jane Smith',
-            'jane@example.com',
-            'Shopkeeper',
-            'Active',
-            Colors.green,
-          ),
-          _buildUserCard(
-            'Bob Wilson',
-            'bob@example.com',
-            'Customer',
-            'Inactive',
-            Colors.red,
-          ),
-          _buildUserCard(
-            'Alice Brown',
-            'alice@example.com',
-            'Admin',
-            'Active',
-            Colors.blue,
-          ),
+          // Loading state
+          if (_isLoadingUsers)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(20.0),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else
+            // User Statistics
+            Row(
+              children: [
+                _buildUserManagementCard('Total Users', '${_getFilteredUsers().length}', Icons.people_rounded, const Color(0xFFB5C7F7)),
+                const SizedBox(width: 16),
+                _buildUserManagementCard('Active Users', '${_getFilteredUsers().where((user) => user['status'] == 'Active').length}', Icons.person_rounded, const Color(0xFFD6EAF8)),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            // Users List
+            if (_getFilteredUsers().isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(40.0),
+                  child: Column(
+                    children: [
+                      Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No users found',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Try adjusting your search or filter criteria',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              // View All Users Button
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: () => _showAllUsersDialog(context),
+                  icon: const Icon(Icons.people),
+                  label: Text('View All Users (${_getFilteredUsers().length})'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF2E7D32),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                ),
+              ),
         ],
       ),
     );
@@ -1476,13 +1594,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                          // User Statistics Cards
                      Column(
                        children: [
-                         _buildUserManagementCard('Total Users', '${_getFilteredUsers().length}', Icons.people_rounded, const Color(0xFFB5C7F7), isLive: true),
+                         _buildUserManagementCard('Total Users', '${_getFilteredUsers().length}', Icons.people_rounded, const Color(0xFFB5C7F7)),
                          const SizedBox(height: 12),
-                         _buildUserManagementCard('Active Users', '${_getFilteredUsers().where((user) => user['status'] == 'Active').length}', Icons.person_rounded, const Color(0xFFD6EAF8), isLive: true),
+                         _buildUserManagementCard('Active Users', '${_getFilteredUsers().where((user) => user['status'] == 'Active').length}', Icons.person_rounded, const Color(0xFFD6EAF8)),
                          const SizedBox(height: 12),
-                         _buildUserManagementCard('New Users (Today)', '$_newUsersToday', Icons.person_add_rounded, const Color(0xFFF9E79F), isLive: true),
+                         _buildUserManagementCard('New Users (Today)', '$_newUsersToday', Icons.person_add_rounded, const Color(0xFFF9E79F)),
                          const SizedBox(height: 12),
-                         _buildUserManagementCard('Premium Users', '${(_totalUsers * 0.15).round()}', Icons.star_rounded, const Color(0xFFE8D5C4), isLive: true),
+                         _buildUserManagementCard('Premium Users', '${(_totalUsers * 0.15).round()}', Icons.star_rounded, const Color(0xFFE8D5C4)),
                        ],
                      ),
                     const SizedBox(height: 24),
@@ -2094,15 +2212,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             shape: BoxShape.circle,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Real-time',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.green,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
                       ],
                     ),
                   ),
@@ -2186,7 +2295,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                           Row(
                         children: [
                           Text(
-                                'Live Store Performance',
+                                'Store Performance',
                             style: GoogleFonts.poppins(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -2194,23 +2303,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             ),
                               ),
                               const Spacer(),
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: const BoxDecoration(
-                                  color: Colors.green,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                'Live',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 12,
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -2258,7 +2350,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                             ),
                           ),
                           const SizedBox(height: 16),
-                                                     ..._storeCategories.entries.map((entry) => _buildCategoryItem(entry.key, entry.value, _getCategoryColor(entry.key))),
+                          Consumer<ProductProvider>(
+                            builder: (context, productProvider, child) {
+                              final categories = <String, int>{};
+                              for (String category in productProvider.availableCategories) {
+                                final count = productProvider.allProducts.where((p) => p['category'] == category).length;
+                                categories[category] = count;
+                              }
+                              return Column(
+                                children: categories.entries.map((entry) => _buildCategoryItem(entry.key, entry.value, _getCategoryColor(entry.key))).toList(),
+                              );
+                            },
+                          ),
                         ],
                       ),
                                          ),
@@ -2285,7 +2388,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                            Row(
                              children: [
                                Text(
-                                 'Live Store Activity Feed',
+                                 'Store Activity Feed',
                                  style: GoogleFonts.poppins(
                                    fontSize: 16,
                                    fontWeight: FontWeight.bold,
@@ -2293,23 +2396,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                  ),
                                ),
                                const Spacer(),
-                               Container(
-                                 width: 8,
-                                 height: 8,
-                                 decoration: const BoxDecoration(
-                                   color: Colors.green,
-                                   shape: BoxShape.circle,
-                                 ),
-                               ),
-                               const SizedBox(width: 8),
-                               Text(
-                                 'Live',
-                                 style: GoogleFonts.poppins(
-                                   fontSize: 12,
-                                   color: Colors.green,
-                                   fontWeight: FontWeight.w600,
-                                 ),
-                               ),
                              ],
                            ),
                            const SizedBox(height: 16),
@@ -2340,7 +2426,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                            Row(
                              children: [
                                Text(
-                                 'Live Store Alerts',
+                                 'Store Alerts',
                                  style: GoogleFonts.poppins(
                                    fontSize: 16,
                                    fontWeight: FontWeight.bold,
@@ -2348,23 +2434,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                                  ),
                                ),
                                const Spacer(),
-                               Container(
-                                 width: 8,
-                                 height: 8,
-                                 decoration: const BoxDecoration(
-                                   color: Colors.red,
-                                   shape: BoxShape.circle,
-                                 ),
-                               ),
-                               const SizedBox(width: 8),
-                               Text(
-                                 'Live',
-                                 style: GoogleFonts.poppins(
-                                   fontSize: 12,
-                                   color: Colors.red,
-                                   fontWeight: FontWeight.w600,
-                                 ),
-                               ),
                              ],
                            ),
                            const SizedBox(height: 16),
@@ -2374,66 +2443,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                      ),
                      const SizedBox(height: 24),
                      
-                     // Enhanced Real-time Store Management
-                     Container(
-                       width: double.infinity,
-                       padding: const EdgeInsets.all(20),
-                       decoration: BoxDecoration(
-                         color: Colors.white,
-                         borderRadius: BorderRadius.circular(16),
-                         boxShadow: [
-                           BoxShadow(
-                             color: Colors.grey.withOpacity(0.1),
-                             blurRadius: 8,
-                             offset: const Offset(0, 4),
-                           ),
-                         ],
-                       ),
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           Row(
-                             children: [
-                               Text(
-                                 'Real-time Store Metrics',
-                                 style: GoogleFonts.poppins(
-                                   fontSize: 16,
-                                   fontWeight: FontWeight.bold,
-                                   color: const Color(0xFF22223B),
-                                 ),
-                               ),
-                               const Spacer(),
-                               Container(
-                                 width: 8,
-                                 height: 8,
-                                 decoration: const BoxDecoration(
-                                   color: Colors.green,
-                                   shape: BoxShape.circle,
-                                 ),
-                               ),
-                               const SizedBox(width: 8),
-                               Text(
-                                 'Live',
-                                 style: GoogleFonts.poppins(
-                                   fontSize: 12,
-                                   color: Colors.green,
-                                   fontWeight: FontWeight.w600,
-                                 ),
-                               ),
-                             ],
-                           ),
-                           const SizedBox(height: 16),
-                           Consumer<StoreProvider>(
-                             builder: (context, storeProvider, child) {
-                               return Column(
-                                 children: storeProvider.allStores.take(3).map((store) => _buildEnhancedRealTimeStoreItem(store)).toList(),
-                               );
-                             },
-                           ),
-                         ],
-                       ),
-                     ),
-                     const SizedBox(height: 24),
                      
                      // Action Buttons
                      Column(
@@ -2958,16 +2967,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     );
   }
 
-  // Helper method to convert UserRole enum to display name
-  String _getRoleDisplayName(UserRole role) {
-    switch (role) {
-      case UserRole.customer:
-        return 'Customer';
-      case UserRole.shopkeeper:
-        return 'Shopkeeper';
-      case UserRole.admin:
-        return 'Admin';
+  // Helper method to convert role (string or UserRole) to display name
+  String _getRoleDisplayName(dynamic role) {
+    if (role is UserRole) {
+      switch (role) {
+        case UserRole.customer:
+          return 'Customer';
+        case UserRole.shopkeeper:
+          return 'Shopkeeper';
+        case UserRole.admin:
+          return 'Admin';
+      }
+    } else if (role is String) {
+      switch (role.toLowerCase()) {
+        case 'customer':
+          return 'Customer';
+        case 'shopkeeper':
+          return 'Shopkeeper';
+        case 'admin':
+          return 'Admin';
+        default:
+          return 'Customer';
+      }
     }
+    return 'Customer';
   }
 
   // New helper methods for enhanced functionality
@@ -3152,7 +3175,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     );
   }
 
-  Widget _buildUserManagementCard(String title, String value, IconData icon, Color color, {bool isLive = false}) {
+  Widget _buildUserManagementCard(String title, String value, IconData icon, Color color) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -3196,17 +3219,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     color: Colors.grey[600],
                   ),
                         ),
-                        if (isLive) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            width: 6,
-                            height: 6,
-                            decoration: const BoxDecoration(
-                              color: Colors.green,
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                        ],
                       ],
                 ),
                 const SizedBox(height: 4),
@@ -3363,7 +3375,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 DropdownMenuItem(value: 'Admin', child: Text('Admin')),
               ],
               onChanged: (value) {
-                selectedRole = value!;
+                if (value != null) {
+                  selectedRole = value;
+                }
               },
             ),
             const SizedBox(height: 16),
@@ -3378,7 +3392,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                 DropdownMenuItem(value: 'Inactive', child: Text('Inactive')),
               ],
               onChanged: (value) {
-                selectedStatus = value!;
+                if (value != null) {
+                  selectedStatus = value;
+                }
               },
             ),
           ],
@@ -3766,7 +3782,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                  DropdownMenuItem(value: 'Admin', child: Text('Admin')),
                ],
                onChanged: (value) {
-                 selectedRole = value!;
+                 if (value != null) {
+                   selectedRole = value;
+                 }
                },
              ),
              const SizedBox(height: 16),
@@ -3781,7 +3799,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                  DropdownMenuItem(value: 'Inactive', child: Text('Inactive')),
                ],
                onChanged: (value) {
-                 selectedStatus = value!;
+                 if (value != null) {
+                   selectedStatus = value;
+                 }
                },
              ),
            ],
@@ -3873,7 +3893,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                  DropdownMenuItem(value: 'Admin', child: Text('Admin')),
                ],
                onChanged: (value) {
-                 selectedRole = value!;
+                 if (value != null) {
+                   selectedRole = value;
+                 }
                },
              ),
            ],
@@ -5745,7 +5767,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ],
               onChanged: (value) {
                             setState(() {
-                selectedCategory = value!;
+                if (value != null) {
+                  selectedCategory = value;
+                }
                             });
                           },
                         ),
@@ -5767,7 +5791,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ],
               onChanged: (value) {
                             setState(() {
-                selectedStatus = value!;
+                if (value != null) {
+                  selectedStatus = value;
+                }
                             });
               },
                         ),
@@ -5857,7 +5883,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                           ],
                           onChanged: (value) {
                             setState(() {
-                              selectedOwnerType = value!;
+                              if (value != null) {
+                                selectedOwnerType = value;
+                              }
                             });
                           },
                         ),
@@ -5879,7 +5907,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ],
               onChanged: (value) {
                             setState(() {
-                              selectedSustainabilityLevel = value!;
+                              if (value != null) {
+                                selectedSustainabilityLevel = value;
+                              }
                             });
               },
                         ),
@@ -5903,7 +5933,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
               ],
               onChanged: (value) {
                       setState(() {
-                        selectedVerificationStatus = value!;
+                        if (value != null) {
+                          selectedVerificationStatus = value;
+                        }
                       });
                     },
                   ),
@@ -5921,7 +5953,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     Icons.eco_rounded,
                     (value) {
                       setState(() {
-                        isEcoCertified = value!;
+                        if (value != null) {
+                          isEcoCertified = value;
+                        }
                       });
                     },
                   ),
@@ -5934,7 +5968,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     Icons.star_rounded,
                     (value) {
                       setState(() {
-                        isPremium = value!;
+                        if (value != null) {
+                          isPremium = value;
+                        }
                       });
                     },
                   ),
@@ -5947,7 +5983,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     Icons.delivery_dining_rounded,
                     (value) {
                       setState(() {
-                        hasDelivery = value!;
+                        if (value != null) {
+                          hasDelivery = value;
+                        }
                       });
                     },
                   ),
@@ -5960,7 +5998,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     Icons.storefront_rounded,
                     (value) {
                       setState(() {
-                        hasPickup = value!;
+                        if (value != null) {
+                          hasPickup = value;
+                        }
                       });
                     },
                   ),
@@ -6271,7 +6311,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                   )).toList(),
                   onChanged: (value) {
                     setDialogState(() {
-                      selectedCategory = value!;
+                      if (value != null) {
+                        selectedCategory = value;
+                      }
                     });
                   },
                 ),
@@ -6791,8 +6833,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     
     final storeProvider = Provider.of<StoreProvider>(context, listen: false);
     for (var store in storeProvider.allStores) {
+      final performance = (store['performance'] as num?)?.toDouble() ?? 0.0;
+      final revenue = (store['revenue'] as num?)?.toDouble() ?? 0.0;
+      
       // Performance alerts
-      if (store['performance'] < 0.6) {
+      if (performance < 0.6) {
         alerts.add({
           'store': store['name'],
           'message': 'Low performance detected',
@@ -6803,7 +6848,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       }
       
       // Revenue alerts
-      if (store['revenue'] < 20000) {
+      if (revenue < 20000) {
         alerts.add({
           'store': store['name'],
           'message': 'Revenue below threshold',
@@ -6814,7 +6859,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       }
       
       // High performance alerts
-      if (store['performance'] > 0.9) {
+      if (performance > 0.9) {
         alerts.add({
           'store': store['name'],
           'message': 'Excellent performance!',
@@ -7419,7 +7464,7 @@ Widget _buildAdminProductList(BuildContext context) {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    _getIconFromString(product['icon']),
+                    _getIconFromString(product['icon']?.toString() ?? ''),
                     color: _parseColor(product['color']),
                     size: 30,
                   ),
@@ -8243,7 +8288,7 @@ void _showEditProductAdmin(BuildContext context, Map<String, dynamic> product) {
   String selectedCategory = product['category'] ?? 'Clothing';
   String selectedMaterial = product['material'] ?? 'Organic Cotton';
   Color selectedColor = _parseColor(product['color']);
-  IconData selectedIcon = _getIconFromString(product['icon']);
+  IconData selectedIcon = _getIconFromString(product['icon']?.toString() ?? '');
   String selectedStore = product['storeId'] ?? '1';
 
   showModalBottomSheet(
@@ -8488,7 +8533,9 @@ Widget _buildEditProductForm(
                 )).toList(),
             onChanged: (value) {
               setState(() {
-                selectedMaterial = value!;
+                if (value != null) {
+                  selectedMaterial = value;
+                }
               });
             },
           ),
@@ -8812,14 +8859,12 @@ class _PastelStatCard extends StatelessWidget {
   final String value;
   final Color color;
   final IconData icon;
-  final bool isLive;
 
   const _PastelStatCard({
     required this.title,
     required this.value,
     required this.color,
     required this.icon,
-    this.isLive = false,
   });
 
   @override
@@ -8844,17 +8889,6 @@ class _PastelStatCard extends StatelessWidget {
             Row(
           children: [
             Icon(icon, color: const Color(0xFF22223B), size: 32),
-                if (isLive) ...[
-                  const Spacer(),
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: Colors.green,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ],
               ],
             ),
             const SizedBox(height: 12),
@@ -8932,10 +8966,23 @@ class _PastelActionCard extends StatelessWidget {
 }
 
 
+  // Helper method to safely get color from product data
+  Color _getProductColor(dynamic colorData) {
+    if (colorData is Color) {
+      return colorData;
+    } else if (colorData is String) {
+      // Handle hex color strings
+      try {
+        return Color(int.parse(colorData.replaceFirst('#', '0xff')));
+      } catch (e) {
+        return Colors.grey[600]!;
+      }
+    }
+    return Colors.grey[600]!;
+  }
+
+
   void _showCategoryDetails(BuildContext context, String category, int productCount) {
-    final productProvider = Provider.of<ProductProvider>(context, listen: false);
-    final categoryProducts = productProvider.allProducts.where((p) => p['category'] == category).toList();
-    
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -8964,7 +9011,7 @@ class _PastelActionCard extends StatelessWidget {
               child: Row(
                 children: [
                   Text(
-                    ' Products',
+                    '$category Products',
                     style: GoogleFonts.poppins(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -8979,7 +9026,7 @@ class _PastelActionCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      ' products',
+                      '$productCount products',
                       style: GoogleFonts.poppins(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -8997,33 +9044,43 @@ class _PastelActionCard extends StatelessWidget {
               ),
             ),
             Expanded(
-              child: categoryProducts.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: 64,
-                            color: Colors.grey[400],
+              child: Consumer<ProductProvider>(
+                builder: (context, productProvider, child) {
+                  final categoryProducts = productProvider.getProductsByCategory(category);
+                  
+                  // Debug information
+                  print('Showing category details for: $category');
+                  print('Total products in provider: ${productProvider.allProducts.length}');
+                  print('Products in category "$category": ${categoryProducts.length}');
+                  
+                  return categoryProducts.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inventory_2_outlined,
+                                size: 64,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'No products in this category',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'No products in this category',
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      itemCount: categoryProducts.length,
-                      itemBuilder: (context, index) {
-                        final product = categoryProducts[index];
-                        return Container(
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 24),
+                          itemCount: categoryProducts.length,
+                          itemBuilder: (context, index) {
+                            final product = categoryProducts[index];
+                            print('Rendering product $index: ${product['name']}');
+                            return Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -9037,12 +9094,12 @@ class _PastelActionCard extends StatelessWidget {
                                 width: 50,
                                 height: 50,
                                 decoration: BoxDecoration(
-                                  color: product['color']?.withOpacity(0.1) ?? Colors.grey[100],
+                                  color: _getProductColor(product['color']).withOpacity(0.1),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Icon(
-                                  product['icon'] ?? Icons.inventory_2_rounded,
-                                  color: product['color'] ?? Colors.grey[600],
+                                  _getIconFromString(product['icon']?.toString() ?? ''),
+                                  color: _getProductColor(product['color']),
                                   size: 24,
                                 ),
                               ),
@@ -9060,7 +9117,7 @@ class _PastelActionCard extends StatelessWidget {
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
-                                      '?  Qty: ',
+                                      '₹${product['price']?.toStringAsFixed(2) ?? '0.00'} • Qty: ${product['quantity'] ?? 0}',
                                       style: GoogleFonts.poppins(
                                         fontSize: 12,
                                         color: Colors.grey[600],
@@ -9086,9 +9143,11 @@ class _PastelActionCard extends StatelessWidget {
                               ),
                             ],
                           ),
+                            );
+                          },
                         );
-                      },
-                    ),
+                },
+              ),
             ),
           ],
         ),
