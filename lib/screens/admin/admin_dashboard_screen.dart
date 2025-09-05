@@ -189,40 +189,48 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   
   void _updateStoreAnalytics() {
     final storeProvider = Provider.of<StoreProvider>(context, listen: false);
+    bool hasUpdates = false;
+    
     // Update store performance randomly
     for (var store in storeProvider.allStores) {
       // Randomly update performance
       if (Random().nextBool()) {
         store['performance'] = (store['performance'] + (Random().nextDouble() * 0.1 - 0.05)).clamp(0.0, 1.0);
+        hasUpdates = true;
       }
       
       // Randomly update revenue
       if (Random().nextBool()) {
         store['revenue'] += Random().nextInt(1000) - 500;
         store['revenue'] = store['revenue'].clamp(0, 100000);
+        hasUpdates = true;
       }
       
       // Randomly update products count
       if (Random().nextBool()) {
         store['products'] += Random().nextInt(5) - 2;
         store['products'] = store['products'].clamp(0, 500);
+        hasUpdates = true;
       }
       
       // Update online users
       if (Random().nextBool()) {
         store['onlineUsers'] += Random().nextInt(5) - 2;
         store['onlineUsers'] = store['onlineUsers'].clamp(0, 100);
+        hasUpdates = true;
       }
       
       // Update orders today
       if (Random().nextBool()) {
         store['ordersToday'] += Random().nextInt(3);
+        hasUpdates = true;
       }
       
       // Update carbon saved
       if (Random().nextBool()) {
         store['carbonSaved'] += Random().nextDouble() * 0.5;
         store['carbonSaved'] = store['carbonSaved'].clamp(0.0, 50.0);
+        hasUpdates = true;
       }
       
       // Update trend based on performance
@@ -237,6 +245,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
       // Update last order time
       if (Random().nextBool()) {
         store['lastOrder'] = DateTime.now().subtract(Duration(minutes: Random().nextInt(15)));
+        hasUpdates = true;
       }
       
       // Occasionally change store status (very rarely to keep it realistic)
@@ -246,6 +255,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
         } else {
           store['status'] = 'Active';
         }
+        hasUpdates = true;
       }
       
       // Update last updated time
@@ -256,6 +266,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     for (var category in _storeCategories.keys) {
       if (Random().nextBool()) {
         _storeCategories[category] = (_storeCategories[category]! + Random().nextInt(3) - 1).clamp(0, 100);
+        hasUpdates = true;
       }
     }
     
@@ -264,6 +275,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     
     // Occasionally add a new store (very rarely to keep it realistic)
     _addNewStore();
+    
+    // Notify listeners if there were updates
+    if (hasUpdates) {
+      // Trigger UI update by calling setState
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
   
   void _addNewStore() {
@@ -7690,41 +7709,45 @@ Widget _buildCategoryManagement() {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: Colors.grey[200]!),
                 ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.category_rounded,
-                      color: const Color(0xFFB5C7F7),
-                      size: 24,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            category,
-                            style: GoogleFonts.poppins(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            '$categoryProducts products',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
+                child: InkWell(
+                  onTap: () => _showCategoryDetails(context, category, categoryProducts),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.category_rounded,
+                        color: const Color(0xFFB5C7F7),
+                        size: 24,
                       ),
-                    ),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      color: Colors.grey[400],
-                      size: 16,
-                    ),
-                  ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              category,
+                              style: GoogleFonts.poppins(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              '$categoryProducts products',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        color: Colors.grey[400],
+                        size: 16,
+                      ),
+                    ],
+                  ),
                 ),
               );
             }),
@@ -8907,3 +8930,169 @@ class _PastelActionCard extends StatelessWidget {
     );
   }
 }
+
+
+  void _showCategoryDetails(BuildContext context, String category, int productCount) {
+    final productProvider = Provider.of<ProductProvider>(context, listen: false);
+    final categoryProducts = productProvider.allProducts.where((p) => p['category'] == category).toList();
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.8,
+        decoration: const BoxDecoration(
+          color: Color(0xFFF7F6F2),
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(32),
+          ),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.symmetric(vertical: 16),
+              width: 50,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2.5),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Row(
+                children: [
+                  Text(
+                    ' Products',
+                    style: GoogleFonts.poppins(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF22223B),
+                    ),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFB5C7F7).withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      ' products',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF22223B),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.close_rounded),
+                    color: Colors.grey[600],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: categoryProducts.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No products in this category',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      itemCount: categoryProducts.length,
+                      itemBuilder: (context, index) {
+                        final product = categoryProducts[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey[200]!),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: product['color']?.withOpacity(0.1) ?? Colors.grey[100],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  product['icon'] ?? Icons.inventory_2_rounded,
+                                  color: product['color'] ?? Colors.grey[600],
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      product['name'] ?? 'Unknown Product',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '?  Qty: ',
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: product['isActive'] == true ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  product['isActive'] == true ? 'Active' : 'Inactive',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                    color: product['isActive'] == true ? Colors.green : Colors.red,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
