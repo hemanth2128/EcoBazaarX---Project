@@ -1,5 +1,7 @@
 // import 'package:cloud_firestore/cloud_firestore.dart'; // DISABLED - Using Spring Boot Backend
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class EcoChallengeData {
   final String id;
@@ -55,38 +57,102 @@ class EcoChallengeData {
 
   factory EcoChallengeData.fromMap(Map<String, dynamic> map) {
     return EcoChallengeData(
-      id: map['id'] ?? '',
+      id: map['challengeId'] ?? map['id'] ?? '',
       title: map['title'] ?? '',
       description: map['description'] ?? '',
       category: map['category'] ?? '',
-      targetValue: map['targetValue'] ?? 0,
+      targetValue: map['ecoPoints'] ?? map['targetValue'] ?? 0,
       currentValue: map['currentValue'] ?? 0,
-      unit: map['unit'] ?? '',
-      icon: map['icon'] ?? '',
+      unit: map['unit'] ?? 'points',
+      icon: map['icon'] ?? 'eco_rounded',
       color: Color(map['color'] ?? 0xFF4CAF50),
-      startDate: DateTime.parse(map['startDate'] ?? DateTime.now().toIso8601String()),
-      endDate: DateTime.parse(map['endDate'] ?? DateTime.now().toIso8601String()),
+      startDate: map['startDate'] != null 
+          ? DateTime.parse(map['startDate']) 
+          : DateTime.now(),
+      endDate: map['endDate'] != null 
+          ? DateTime.parse(map['endDate']) 
+          : DateTime.now().add(Duration(days: 30)),
       isCompleted: map['isCompleted'] ?? false,
       progress: (map['progress'] ?? 0.0).toDouble(),
-      rewards: List<String>.from(map['rewards'] ?? []),
+      rewards: List<String>.from(map['rewards'] ?? ['Eco Points']),
     );
   }
 }
 
 class EcoChallengesService {
-  // DISABLED - Using Spring Boot Backend
-  // All Firestore functionality has been moved to Spring Boot backend
-  // This service is kept for compatibility but will be replaced with API calls
-
-  // static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  // static final CollectionReference _challengesCollection = _firestore.collection('eco_challenges');
-  // static final CollectionReference _userChallengesCollection = _firestore.collection('user_challenges');
-  // static final CollectionReference _challengeProgressCollection = _firestore.collection('challenge_progress');
+  // Spring Boot Backend API Configuration
+  static const String _baseUrl = 'https://ecobazaarxspringboot-1.onrender.com';
+  static const String _challengesEndpoint = '/api/eco-challenges';
+  
+  // Helper method to make HTTP requests
+  static Future<Map<String, dynamic>> _makeRequest({
+    required String endpoint,
+    required String method,
+    Map<String, dynamic>? body,
+    Map<String, String>? headers,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl$endpoint');
+      final requestHeaders = {
+        'Content-Type': 'application/json',
+        ...?headers,
+      };
+      
+      http.Response response;
+      switch (method.toUpperCase()) {
+        case 'GET':
+          response = await http.get(uri, headers: requestHeaders);
+          break;
+        case 'POST':
+          response = await http.post(
+            uri,
+            headers: requestHeaders,
+            body: body != null ? jsonEncode(body) : null,
+          );
+          break;
+        case 'PUT':
+          response = await http.put(
+            uri,
+            headers: requestHeaders,
+            body: body != null ? jsonEncode(body) : null,
+          );
+          break;
+        case 'DELETE':
+          response = await http.delete(uri, headers: requestHeaders);
+          break;
+        default:
+          throw Exception('Unsupported HTTP method: $method');
+      }
+      
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return jsonDecode(response.body);
+      } else {
+        throw Exception('HTTP ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      print('API Request Error: $e');
+      rethrow;
+    }
+  }
 
   // Get all challenges
   static Future<List<EcoChallengeData>> getAllChallenges() async {
-    // TODO: Implement with Spring Boot API
-    return [];
+    try {
+      final response = await _makeRequest(
+        endpoint: _challengesEndpoint,
+        method: 'GET',
+      );
+      
+      if (response is List) {
+        return response.map((challenge) => EcoChallengeData.fromMap(challenge)).toList();
+      } else {
+        print('Unexpected response format: $response');
+        return [];
+      }
+    } catch (e) {
+      print('Error fetching challenges: $e');
+      return [];
+    }
   }
 
   // Get available challenges
@@ -278,11 +344,37 @@ class EcoChallengesService {
     required String category,
     required int durationDays,
   }) async {
-    // TODO: Implement with Spring Boot API
-    return {
-      'success': false,
-      'message': 'Challenge creation will be implemented with Spring Boot backend',
-    };
+    try {
+      final challengeData = {
+        'challengeId': 'challenge_${DateTime.now().millisecondsSinceEpoch}',
+        'title': title,
+        'description': description,
+        'category': category,
+        'difficulty': 'Medium',
+        'ecoPoints': targetValue,
+        'carbonSavings': targetValue * 0.1, // Estimate carbon savings
+        'isActive': true,
+        'startDate': DateTime.now().toIso8601String(),
+        'endDate': DateTime.now().add(Duration(days: durationDays)).toIso8601String(),
+      };
+      
+      final response = await _makeRequest(
+        endpoint: _challengesEndpoint,
+        method: 'POST',
+        body: challengeData,
+      );
+      
+      return {
+        'success': true,
+        'message': 'Challenge created successfully',
+        'challenge': response,
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Failed to create challenge: $e',
+      };
+    }
   }
 
   // Delete a challenge
@@ -290,10 +382,21 @@ class EcoChallengesService {
     required String challengeId,
     required String userId,
   }) async {
-    // TODO: Implement with Spring Boot API
-    return {
-      'success': false,
-      'message': 'Challenge deletion will be implemented with Spring Boot backend',
-    };
+    try {
+      final response = await _makeRequest(
+        endpoint: '$_challengesEndpoint/$challengeId',
+        method: 'DELETE',
+      );
+      
+      return {
+        'success': true,
+        'message': 'Challenge deleted successfully',
+      };
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Failed to delete challenge: $e',
+      };
+    }
   }
 }
