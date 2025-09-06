@@ -98,7 +98,7 @@ class EcoChallengesProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // Load challenges from Firestore
+  // Load challenges from Spring Boot backend
   Future<void> loadChallenges() async {
     _setLoading(true);
     _clearError();
@@ -128,7 +128,7 @@ class EcoChallengesProvider extends ChangeNotifier {
         _challenges.add(challenge);
       }
       
-      print('Challenges loaded from Firestore: ${_challenges.length}');
+      print('Challenges loaded from Spring Boot backend: ${_challenges.length}');
       notifyListeners();
     } catch (e) {
       _setError('Failed to load challenges: ${e.toString()}');
@@ -137,7 +137,7 @@ class EcoChallengesProvider extends ChangeNotifier {
     }
   }
 
-  // Initialize challenges (load from Firestore or create sample data)
+  // Initialize challenges (load from Spring Boot backend or create sample data)
   Future<void> initializeChallenges() async {
     await loadChallenges();
     
@@ -148,7 +148,7 @@ class EcoChallengesProvider extends ChangeNotifier {
     }
   }
 
-  // Load user progress from Firestore
+  // Load user progress from Spring Boot backend
   Future<void> loadUserProgress(String userId) async {
     try {
       final progressList = await EcoChallengesService.getUserProgress(userId);

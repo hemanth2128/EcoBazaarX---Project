@@ -78,7 +78,7 @@ class SpringAuthProvider extends ChangeNotifier {
   Future<Map<String, dynamic>> login(String email, String password, UserRole role) async {
     try {
       final result = await ApiService.authenticate(email, password, _userRoleToString(role));
-      
+
       if (result['success'] == true) {
         _jwtToken = result['token'];
         _refreshToken = result['refreshToken'];
@@ -99,7 +99,7 @@ class SpringAuthProvider extends ChangeNotifier {
         await prefs.setString('refreshToken', _refreshToken!);
 
         notifyListeners();
-        
+
         return {
           'success': true,
           'message': 'Login successful!',

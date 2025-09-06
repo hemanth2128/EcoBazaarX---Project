@@ -582,11 +582,9 @@ class SettingsProvider extends ChangeNotifier {
     try {
       if (_authProvider.isAuthenticated && _authProvider.userId != null) {
         final settings = await SettingsService.getUserSettings(_authProvider.userId!);
-        if (settings != null) {
-          _updateSettingsFromMap(settings);
-          notifyListeners();
-        }
-      }
+        _updateSettingsFromMap(settings);
+        notifyListeners();
+            }
     } catch (e) {
       print('Error refreshing settings: $e');
     }

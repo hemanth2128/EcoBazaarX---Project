@@ -60,7 +60,9 @@ class FirebaseConfig {
   static const String environment = 'production'; // Change to 'production' for production
 
   // API endpoints (if needed for custom backend)
-  static const String baseApiUrl = 'https://ecobazaarxspringboot-1.onrender.com/api';
+  // For development, use local backend. For production, use Render backend
+  // static const String baseApiUrl = 'http://localhost:10000/api'; // Local development
+  static const String baseApiUrl = 'https://ecobazaarxspringboot-1.onrender.com/api'; // Production
   static const String authApiUrl = '$baseApiUrl/auth';
   static const String storesApiUrl = '$baseApiUrl/stores';
   static const String productsApiUrl = '$baseApiUrl/products';

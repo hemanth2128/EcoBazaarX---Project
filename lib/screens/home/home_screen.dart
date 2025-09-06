@@ -677,13 +677,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           ),
                         ),
                         const SizedBox(width: 16),
-                        Expanded(
-                          child: _PastelActionCard(
-                            icon: Icons.shopping_bag_rounded,
-                            label: 'View Orders',
-                            color: const Color(0xFFF9E79F),
-                            onTap: () => _showShopkeeperOrders(),
-                          ),
+                        // Role-based View Orders button - only show for shopkeepers
+                        Consumer<SpringAuthProvider>(
+                          builder: (context, authProvider, child) {
+                            if (authProvider.userRole == UserRole.shopkeeper) {
+                              return Expanded(
+                                child: _PastelActionCard(
+                                  icon: Icons.shopping_bag_rounded,
+                                  label: 'View Orders',
+                                  color: const Color(0xFFF9E79F),
+                                  onTap: () => _showShopkeeperOrders(),
+                                ),
+                              );
+                            } else {
+                              // For customers, show a different action
+                              return Expanded(
+                                child: _PastelActionCard(
+                                  icon: Icons.favorite_rounded,
+                                  label: 'Wishlist',
+                                  color: const Color(0xFFF9E79F),
+                                  onTap: () => _navigateToWishlist(),
+                                ),
+                              );
+                            }
+                          },
                         ),
                         const SizedBox(width: 16),
                         Expanded(
@@ -1222,6 +1239,10 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       isScrollControlled: true,
       builder: (context) => _buildShoppingOptionsModal(),
     );
+  }
+
+  void _navigateToWishlist() {
+    Navigator.pushNamed(context, '/wishlist');
   }
 
   Widget _buildShoppingOptionsModal() {

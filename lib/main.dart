@@ -17,7 +17,6 @@ import 'providers/product_view_provider.dart';
 import 'providers/eco_challenges_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/orders_provider.dart';
-import 'config/firebase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

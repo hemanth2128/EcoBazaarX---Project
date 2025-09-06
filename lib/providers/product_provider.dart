@@ -425,7 +425,7 @@ class ProductProvider extends ChangeNotifier {
   int get activeProductsCount => activeProducts.length;
 
   // Add new product
-  Future<Map<String, dynamic>> addProduct(Map<String, dynamic> product) async {
+  Future<Map<String, dynamic>> addProduct(Map<String, dynamic> product, {String? authToken, String? storeId, String? storeName}) async {
     try {
       // Generate random carbon footprint based on category
       product['carbonFootprint'] = _generateCarbonFootprint(product['category']);
@@ -435,16 +435,19 @@ class ProductProvider extends ChangeNotifier {
         product['quantity'] = 50 + Random().nextInt(200);
       }
       
-      // Add to Firebase
+      // Add to Spring Boot backend
       final result = await ProductService.addProduct(
         name: product['name'] ?? '',
         description: product['description'] ?? '',
         price: (product['price'] ?? 0.0).toDouble(),
         stock: product['quantity'] ?? 0,
         category: product['category'] ?? '',
+        storeId: storeId ?? product['storeId'] ?? '1',
+        storeName: storeName ?? product['storeName'] ?? 'Default Store',
         imageUrl: product['imageUrl'],
         icon: product['icon'],
         color: product['color'],
+        authToken: authToken,
       );
       
       if (result['success']) {

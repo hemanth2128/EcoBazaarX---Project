@@ -13,22 +13,33 @@ class ProductService {
     required double price,
     required int stock,
     required String category,
+    required String storeId,
+    required String storeName,
     String? imageUrl,
     String? icon,
     String? color,
+    String? authToken,
   }) async {
     try {
+      final headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (authToken != null) {
+        headers['Authorization'] = 'Bearer $authToken';
+      }
+
       final response = await http.post(
         Uri.parse('$_baseUrl$_productsEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: jsonEncode({
           'name': name,
           'description': description,
           'price': price,
           'quantity': stock,
           'category': category,
+          'storeId': storeId,
+          'storeName': storeName,
           'imageUrl': imageUrl ?? '',
           'isActive': true,
         }),

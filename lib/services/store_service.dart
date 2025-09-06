@@ -16,13 +16,20 @@ class StoreService {
     String? address,
     String? phone,
     String? email,
+    String? authToken,
   }) async {
     try {
+      final headers = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (authToken != null) {
+        headers['Authorization'] = 'Bearer $authToken';
+      }
+
       final response = await http.post(
         Uri.parse('$_baseUrl$_storesEndpoint'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: headers,
         body: jsonEncode({
           'storeName': name,
           'description': description,

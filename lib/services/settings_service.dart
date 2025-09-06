@@ -10,7 +10,7 @@ class SettingsService {
   static Future<Map<String, dynamic>> getUserSettings(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -38,7 +38,7 @@ class SettingsService {
   }) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -104,7 +104,7 @@ class SettingsService {
   static Future<Map<String, dynamic>> getNotificationSettings(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId/notifications'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId/notifications'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -144,7 +144,7 @@ class SettingsService {
   }) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId/notifications'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId/notifications'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -177,7 +177,7 @@ class SettingsService {
   static Future<Map<String, dynamic>> getPrivacySettings(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId/privacy'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId/privacy'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -217,7 +217,7 @@ class SettingsService {
   }) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId/privacy'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId/privacy'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -250,7 +250,7 @@ class SettingsService {
   static Future<Map<String, dynamic>> getSecuritySettings(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId/security'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId/security'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -287,7 +287,7 @@ class SettingsService {
   }) async {
     try {
       final response = await http.put(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId/security'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId/security'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -319,7 +319,7 @@ class SettingsService {
   static Future<Map<String, dynamic>> resetSettingsToDefault(String userId) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId/reset'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId/reset'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -345,7 +345,7 @@ class SettingsService {
   static Future<Map<String, dynamic>> exportUserData(String userId) async {
     try {
       final response = await http.get(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId/export'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId/export'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -371,7 +371,7 @@ class SettingsService {
   static Future<Map<String, dynamic>> deleteUserData(String userId) async {
     try {
       final response = await http.delete(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId'),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -422,7 +422,7 @@ class SettingsService {
   static Future<void> initializeUserSettings(String userId) async {
     try {
       final response = await http.post(
-        Uri.parse('$_baseUrl$_settingsEndpoint/user/$userId/initialize'),
+        Uri.parse('$_baseUrl$_settingsEndpoint/$userId/initialize'),
         headers: {
           'Content-Type': 'application/json',
         },

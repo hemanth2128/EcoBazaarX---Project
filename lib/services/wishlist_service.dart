@@ -4,7 +4,7 @@ import '../config/firebase_config.dart';
 
 class WishlistService {
   static const String _baseUrl = FirebaseConfig.baseApiUrl;
-  static const String _wishlistEndpoint = '/api/wishlist';
+  static const String _wishlistEndpoint = '/wishlist';
 
   // Add item to wishlist
   static Future<Map<String, dynamic>> addToWishlist({

@@ -326,6 +326,41 @@ class StoreProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  // Create new store
+  Future<Map<String, dynamic>> createStore(Map<String, dynamic> store, {String? authToken}) async {
+    try {
+      _setLoading(true);
+      _error = null;
+      
+      final result = await StoreService.createStore(
+        name: store['name'] ?? '',
+        description: store['description'] ?? '',
+        category: store['category'] ?? 'General Store',
+        ownerId: store['ownerId'] ?? '',
+        imageUrl: store['imageUrl'],
+        address: store['address'],
+        phone: store['phone'],
+        email: store['email'],
+        authToken: authToken,
+      );
+      
+      if (result['success'] == true) {
+        // Reload stores from backend
+        await loadStores();
+      }
+      
+      return result;
+    } catch (e) {
+      _error = 'Failed to create store: ${e.toString()}';
+      return {
+        'success': false,
+        'message': _error!,
+      };
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // Get store statistics
   Future<Map<String, dynamic>> getStoreStats() async {
     try {

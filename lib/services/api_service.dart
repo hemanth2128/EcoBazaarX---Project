@@ -37,8 +37,6 @@ class ApiService {
         headers: _getHeaders(authToken: authToken),
       ).timeout(_timeout);
 
-      print('API Response Status: ${response.statusCode}');
-      print('API Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         return json.decode(response.body);
@@ -60,8 +58,6 @@ class ApiService {
     try {
       final url = '$_baseUrl$endpoint';
       
-      print('API POST Request: $url');
-      print('API POST Body: ${json.encode(body)}');
 
       final response = await http.post(
         Uri.parse(url),
@@ -69,8 +65,6 @@ class ApiService {
         body: body != null ? json.encode(body) : null,
       ).timeout(_timeout);
 
-      print('API Response Status: ${response.statusCode}');
-      print('API Response Body: ${response.body}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return json.decode(response.body);
@@ -101,8 +95,6 @@ class ApiService {
         body: body != null ? json.encode(body) : null,
       ).timeout(_timeout);
 
-      print('API Response Status: ${response.statusCode}');
-      print('API Response Body: ${response.body}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return json.decode(response.body);
@@ -130,8 +122,6 @@ class ApiService {
         headers: _getHeaders(authToken: authToken),
       ).timeout(_timeout);
 
-      print('API Response Status: ${response.statusCode}');
-      print('API Response Body: ${response.body}');
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
         return json.decode(response.body);
@@ -253,15 +243,16 @@ class ApiService {
         'role': role,
       });
       
-      // Handle new JWT token format
+      // Handle JWT token format - backend returns 'accessToken' but frontend expects 'token'
       if (response['success'] == true) {
         return {
           'success': true,
-          'message': response['message'],
-          'token': response['accessToken'], // New JWT token field
+          'message': response['message'] ?? 'Login successful',
+          'token': response['accessToken'] ?? response['token'], // Try both field names
           'refreshToken': response['refreshToken'],
           'userId': response['userId'],
           'userRole': response['userRole'],
+          'userName': response['userName'] ?? email.split('@')[0], // Add userName if available
         };
       }
       
