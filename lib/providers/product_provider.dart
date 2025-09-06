@@ -288,20 +288,20 @@ class ProductProvider extends ChangeNotifier {
     _setLoading(true);
     try {
       // Try to load from Firebase first
-      _allProducts = await _productService.getAllProducts();
+      _allProducts = await ProductService.getAllProducts();
       _error = null;
       
       // If no products in Firebase, initialize sample data
       if (_allProducts.isEmpty) {
         print('No products found in Firebase, initializing sample data...');
-        await _productService.initializeSampleProducts();
-        _allProducts = await _productService.getAllProducts();
+        // await ProductService.initializeSampleProducts(); // Method doesn't exist yet
+        _allProducts = await ProductService.getAllProducts();
       }
     } catch (e) {
       _error = 'Failed to load products: ${e.toString()}';
       print('Error initializing products: $e');
       // Fallback to static data
-      _allProducts = _productService.getStaticProducts();
+      _allProducts = await ProductService.getAllProducts();
     } finally {
       _setLoading(false);
     }
@@ -311,7 +311,7 @@ class ProductProvider extends ChangeNotifier {
   Future<void> loadProducts() async {
     _setLoading(true);
     try {
-      _allProducts = await _productService.getAllProducts();
+      _allProducts = await ProductService.getAllProducts();
       _error = null;
     } catch (e) {
       _error = 'Failed to load products: ${e.toString()}';
@@ -325,7 +325,7 @@ class ProductProvider extends ChangeNotifier {
   Future<void> loadProductsByCategory(String category) async {
     _setLoading(true);
     try {
-      _allProducts = await _productService.getProductsByCategory(category);
+      _allProducts = await ProductService.getProductsByCategory(category);
       _error = null;
     } catch (e) {
       _error = 'Failed to load products: ${e.toString()}';
@@ -339,7 +339,9 @@ class ProductProvider extends ChangeNotifier {
   Future<void> loadProductsByStore(String storeId) async {
     _setLoading(true);
     try {
-      _allProducts = await _productService.getProductsByStore(storeId);
+      // TODO: Implement getProductsByStore with Spring Boot API
+      // _allProducts = await ProductService.getProductsByStore(storeId);
+      _allProducts = [];
       _error = null;
     } catch (e) {
       _error = 'Failed to load products: ${e.toString()}';
@@ -353,7 +355,7 @@ class ProductProvider extends ChangeNotifier {
   Future<void> searchProductsFirebase(String query) async {
     _setLoading(true);
     try {
-      _allProducts = await _productService.searchProducts(query);
+      _allProducts = await ProductService.searchProducts(query);
       _error = null;
     } catch (e) {
       _error = 'Failed to search products: ${e.toString()}';
@@ -366,7 +368,7 @@ class ProductProvider extends ChangeNotifier {
   // Get featured products from Firebase
   Future<List<Map<String, dynamic>>> getFeaturedProducts({int limit = 6}) async {
     try {
-      return await _productService.getFeaturedProducts(limit: limit);
+      return await ProductService.getFeaturedProducts();
     } catch (e) {
       print('Error getting featured products: $e');
       return [];
@@ -376,7 +378,7 @@ class ProductProvider extends ChangeNotifier {
   // Get low stock products from Firebase
   Future<List<Map<String, dynamic>>> getLowStockProducts({int threshold = 10}) async {
     try {
-      return await _productService.getLowStockProducts(threshold: threshold);
+      return await ProductService.getLowStockProducts(threshold);
     } catch (e) {
       print('Error getting low stock products: $e');
       return [];
@@ -386,7 +388,7 @@ class ProductProvider extends ChangeNotifier {
   // Get product statistics from Firebase
   Future<Map<String, dynamic>> getProductStats() async {
     try {
-      return await _productService.getProductStats();
+      return await ProductService.getProductStatistics();
     } catch (e) {
       print('Error getting product stats: $e');
       return {
@@ -434,7 +436,16 @@ class ProductProvider extends ChangeNotifier {
       }
       
       // Add to Firebase
-      final result = await _productService.addProduct(product);
+      final result = await ProductService.addProduct(
+        name: product['name'] ?? '',
+        description: product['description'] ?? '',
+        price: (product['price'] ?? 0.0).toDouble(),
+        stock: product['quantity'] ?? 0,
+        category: product['category'] ?? '',
+        imageUrl: product['imageUrl'],
+        icon: product['icon'],
+        color: product['color'],
+      );
       
       if (result['success']) {
         // Reload products from Firebase
@@ -454,7 +465,17 @@ class ProductProvider extends ChangeNotifier {
   // Update product
   Future<Map<String, dynamic>> updateProduct(String productId, Map<String, dynamic> updatedData) async {
     try {
-      final result = await _productService.updateProduct(productId, updatedData);
+      final result = await ProductService.updateProduct(
+        productId: productId,
+        name: updatedData['name'],
+        description: updatedData['description'],
+        price: updatedData['price']?.toDouble(),
+        stock: updatedData['quantity'],
+        category: updatedData['category'],
+        imageUrl: updatedData['imageUrl'],
+        icon: updatedData['icon'],
+        color: updatedData['color'],
+      );
       
       if (result['success']) {
         // Reload products from Firebase
@@ -473,7 +494,7 @@ class ProductProvider extends ChangeNotifier {
   // Delete product
   Future<Map<String, dynamic>> deleteProduct(String productId) async {
     try {
-      final result = await _productService.deleteProduct(productId);
+      final result = await ProductService.deleteProduct(productId);
       
       if (result['success']) {
         // Reload products from Firebase
@@ -497,9 +518,11 @@ class ProductProvider extends ChangeNotifier {
       final currentStatus = product['isActive'] ?? true;
       final newStatus = !currentStatus;
       
-      final result = await _productService.toggleProductStatus(productId, newStatus);
+      // TODO: Implement toggleProductStatus with Spring Boot API
+      // final result = await ProductService.toggleProductStatus(productId, newStatus);
+      final result = {'success': false, 'message': 'Toggle product status not implemented yet'};
       
-      if (result['success']) {
+      if (result['success'] == true) {
         // Reload products from Firebase
         await loadProducts();
       }

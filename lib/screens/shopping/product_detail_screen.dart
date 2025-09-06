@@ -185,12 +185,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen>
                                     userId: currentUserId,
                                     productId: widget.product['id'],
                                     productName: widget.product['name'],
-                                    productDescription: widget.product['description'],
-                                                                         productPrice: _parseDouble(widget.product['price']),
-                                    productCategory: widget.product['category'],
-                                                                         productColor: widget.product['color'] is String ? widget.product['color'] : '#B5C7F7',
-                                                                         productIcon: widget.product['icon'] is String ? widget.product['icon'] : 'shopping_bag_rounded',
-                                                                         carbonFootprint: _parseDouble(widget.product['carbonFootprint']),
+                                    price: _parseDouble(widget.product['price']),
+                                    category: widget.product['category'],
                                   );
                                   if (success) {
                                     ScaffoldMessenger.of(context).showSnackBar(

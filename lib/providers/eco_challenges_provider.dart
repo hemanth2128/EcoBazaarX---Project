@@ -87,7 +87,6 @@ class EcoChallengesProvider extends ChangeNotifier {
   }
 
   final List<EcoChallenge> _challenges = [];
-  final Map<String, int> _userProgress = {};
   int _totalEcoPoints = 0;
   bool _isLoading = false;
   String? _error;
@@ -113,18 +112,18 @@ class EcoChallengesProvider extends ChangeNotifier {
           id: challengeData.id,
           title: challengeData.title,
           description: challengeData.description,
-          reward: challengeData.reward,
-          color: _parseColor(challengeData.colorHex),
-          icon: _parseIcon(challengeData.iconName),
+          reward: challengeData.rewards.isNotEmpty ? challengeData.rewards.first : 'Eco Points',
+          color: challengeData.color,
+          icon: _parseIcon(challengeData.icon),
           targetValue: challengeData.targetValue,
-          targetUnit: challengeData.targetUnit,
+          targetUnit: challengeData.unit,
           startDate: challengeData.startDate,
           endDate: challengeData.endDate,
           category: challengeData.category,
-          isActive: challengeData.isActive,
+          isActive: !challengeData.isCompleted,
           isCompleted: challengeData.isCompleted,
-          currentProgress: challengeData.currentProgress,
-          progressPercentage: challengeData.progressPercentage,
+          currentProgress: challengeData.currentValue,
+          progressPercentage: challengeData.progress,
         );
         _challenges.add(challenge);
       }
@@ -155,13 +154,13 @@ class EcoChallengesProvider extends ChangeNotifier {
       final progressList = await EcoChallengesService.getUserProgress(userId);
       
       for (final progress in progressList) {
-        final challengeIndex = _challenges.indexWhere((c) => c.id == progress.challengeId);
+        final challengeIndex = _challenges.indexWhere((c) => c.id == progress['challengeId']);
         if (challengeIndex != -1) {
           final challenge = _challenges[challengeIndex];
           _challenges[challengeIndex] = challenge.copyWith(
-            currentProgress: progress.currentProgress,
-            progressPercentage: progress.progressPercentage,
-            isCompleted: progress.isCompleted,
+            currentProgress: progress['currentProgress'] ?? 0,
+            progressPercentage: (progress['progressPercentage'] ?? 0.0).toDouble(),
+            isCompleted: progress['isCompleted'] ?? false,
           );
         }
       }
@@ -300,7 +299,7 @@ class EcoChallengesProvider extends ChangeNotifier {
       final result = await EcoChallengesService.updateChallengeProgress(
         userId: userId,
         challengeId: challengeId,
-        progress: progress,
+        progressValue: progress,
       );
       
       if (result['success']) {
@@ -357,19 +356,6 @@ class EcoChallengesProvider extends ChangeNotifier {
     _error = null;
   }
 
-  Color _parseColor(String colorHex) {
-    try {
-      String hex = colorHex.startsWith('#') ? colorHex.substring(1) : colorHex;
-      if (hex.length == 6) {
-        return Color(int.parse('FF$hex', radix: 16));
-      } else if (hex.length == 8) {
-        return Color(int.parse(hex, radix: 16));
-      }
-    } catch (e) {
-      print('Error parsing color: $colorHex - $e');
-    }
-    return const Color(0xFFB5C7F7);
-  }
 
   IconData _parseIcon(String iconName) {
     final iconMap = {

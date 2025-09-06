@@ -247,11 +247,25 @@ class ApiService {
     String role,
   ) async {
     try {
-      return await post('/auth/login', body: {
+      final response = await post('/auth/login', body: {
         'email': email,
         'password': password,
         'role': role,
       });
+      
+      // Handle new JWT token format
+      if (response['success'] == true) {
+        return {
+          'success': true,
+          'message': response['message'],
+          'token': response['accessToken'], // New JWT token field
+          'refreshToken': response['refreshToken'],
+          'userId': response['userId'],
+          'userRole': response['userRole'],
+        };
+      }
+      
+      return response;
     } catch (e) {
       print('Authentication failed: $e');
       rethrow;
@@ -262,9 +276,45 @@ class ApiService {
     Map<String, dynamic> userData,
   ) async {
     try {
-      return await post('/auth/register', body: userData);
+      final response = await post('/auth/register', body: userData);
+      
+      // Handle new JWT token format
+      if (response['success'] == true) {
+        return {
+          'success': true,
+          'message': response['message'],
+          'userId': response['userId'],
+          'userRole': response['userRole'],
+        };
+      }
+      
+      return response;
     } catch (e) {
       print('Registration failed: $e');
+      rethrow;
+    }
+  }
+
+  // JWT Token validation
+  static Future<Map<String, dynamic>> validateToken(String token) async {
+    try {
+      return await post('/auth/validate', body: {
+        'token': token,
+      });
+    } catch (e) {
+      print('Token validation failed: $e');
+      rethrow;
+    }
+  }
+
+  // Refresh JWT token
+  static Future<Map<String, dynamic>> refreshToken(String refreshToken) async {
+    try {
+      return await post('/auth/refresh', body: {
+        'refreshToken': refreshToken,
+      });
+    } catch (e) {
+      print('Token refresh failed: $e');
       rethrow;
     }
   }

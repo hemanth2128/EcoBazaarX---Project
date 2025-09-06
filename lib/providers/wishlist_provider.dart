@@ -65,20 +65,9 @@ class WishlistProvider extends ChangeNotifier {
     required String userId,
     required String productId,
     required String productName,
-    required String productDescription,
-    required double productPrice,
-    required String productCategory,
-    required String productColor,
-    required String productIcon,
-    required double carbonFootprint,
-    String? productImage,
-    double? waterSaved,
-    double? energySaved,
-    double? wasteReduced,
-    double? treesEquivalent,
-    String? material,
-    double? rating,
-    double? quantity,
+    required double price,
+    String? imageUrl,
+    String? category,
   }) async {
     _setLoading(true);
     _clearError();
@@ -88,20 +77,9 @@ class WishlistProvider extends ChangeNotifier {
         userId: userId,
         productId: productId,
         productName: productName,
-        productDescription: productDescription,
-        productPrice: productPrice,
-        productCategory: productCategory,
-        productColor: productColor,
-        productIcon: productIcon,
-        carbonFootprint: carbonFootprint,
-        productImage: productImage,
-        waterSaved: waterSaved,
-        energySaved: energySaved,
-        wasteReduced: wasteReduced,
-        treesEquivalent: treesEquivalent,
-        material: material,
-        rating: rating,
-        quantity: quantity,
+        price: price,
+        imageUrl: imageUrl,
+        category: category,
       );
       
       if (result['success']) {
@@ -130,10 +108,7 @@ class WishlistProvider extends ChangeNotifier {
     _clearError();
     
     try {
-      final result = await WishlistService.removeFromWishlist(
-        userId: userId,
-        productId: productId,
-      );
+      final result = await WishlistService.removeFromWishlist(userId, productId);
       
       if (result['success']) {
         await loadWishlist(userId);
@@ -160,7 +135,7 @@ class WishlistProvider extends ChangeNotifier {
   // Check if product is in wishlist (asynchronous - checks database)
   Future<bool> isProductInWishlist(String userId, String productId) async {
     try {
-      return await WishlistService.isProductInWishlist(userId, productId);
+      return await WishlistService.isInWishlist(userId, productId);
     } catch (e) {
       print('Error checking wishlist status: $e');
       return false;
@@ -213,11 +188,7 @@ class WishlistProvider extends ChangeNotifier {
     _clearError();
     
     try {
-      final result = await WishlistService.moveToCart(
-        userId: userId,
-        productId: productId,
-        addToCartCallback: addToCartCallback,
-      );
+      final result = await WishlistService.moveToCart(userId, productId);
       
       if (result['success']) {
         await loadWishlist(userId);
@@ -249,7 +220,7 @@ class WishlistProvider extends ChangeNotifier {
   // Load wishlist statistics
   Future<void> _loadWishlistStats(String userId) async {
     try {
-      _wishlistStats = await WishlistService.getWishlistStats(userId);
+      _wishlistStats = await WishlistService.getWishlistStatistics(userId);
     } catch (e) {
       print('Error loading wishlist stats: $e');
     }

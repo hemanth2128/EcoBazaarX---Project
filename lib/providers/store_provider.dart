@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../services/store_service.dart';
 
 class StoreProvider with ChangeNotifier {
-  final StoreService _storeService = StoreService();
   
   List<Map<String, dynamic>> _allStores = [];
   List<Map<String, dynamic>> _filteredStores = [];
@@ -52,7 +51,7 @@ class StoreProvider with ChangeNotifier {
       _error = null;
       
       // First try to load from Firebase
-      List<Map<String, dynamic>> stores = await _storeService.getAllStores();
+      List<Map<String, dynamic>> stores = await StoreService.getAllStores();
       
       if (stores.isNotEmpty) {
         _allStores = stores;
@@ -60,8 +59,8 @@ class StoreProvider with ChangeNotifier {
         print('Stores loaded from Firebase: ${stores.length} stores');
       } else {
         // If Firebase is empty, initialize with sample data
-        await _storeService.initializeSampleStores();
-        stores = await _storeService.getAllStores();
+        // await StoreService.initializeSampleStores(); // Method doesn't exist yet
+        stores = await StoreService.getAllStores();
         _allStores = stores;
         _filteredStores = stores;
         print('Sample stores initialized and loaded: ${stores.length} stores');
@@ -70,7 +69,7 @@ class StoreProvider with ChangeNotifier {
       print('Error initializing stores: $e');
       _error = 'Failed to load stores: ${e.toString()}';
       // Fallback to static data
-      _allStores = _storeService.getStaticStores();
+      _allStores = await StoreService.getAllStores();
       _filteredStores = _allStores;
     } finally {
       _setLoading(false);
@@ -83,7 +82,7 @@ class StoreProvider with ChangeNotifier {
       _setLoading(true);
       _error = null;
       
-      List<Map<String, dynamic>> stores = await _storeService.getAllStores();
+      List<Map<String, dynamic>> stores = await StoreService.getAllStores();
       _allStores = stores;
       _filteredStores = stores;
     } catch (e) {
@@ -100,7 +99,16 @@ class StoreProvider with ChangeNotifier {
       _setLoading(true);
       _error = null;
       
-      final result = await _storeService.addStore(storeData);
+      final result = await StoreService.createStore(
+        name: storeData['name'] ?? '',
+        description: storeData['description'] ?? '',
+        category: storeData['category'] ?? '',
+        ownerId: storeData['ownerId'] ?? '',
+        imageUrl: storeData['imageUrl'],
+        address: storeData['address'],
+        phone: storeData['phone'],
+        email: storeData['email'],
+      );
       
       if (result['success']) {
         // Reload stores from Firebase
@@ -125,7 +133,16 @@ class StoreProvider with ChangeNotifier {
       _setLoading(true);
       _error = null;
       
-      final result = await _storeService.updateStore(storeId, updateData);
+      final result = await StoreService.updateStore(
+        storeId: storeId,
+        name: updateData['name'],
+        description: updateData['description'],
+        category: updateData['category'],
+        imageUrl: updateData['imageUrl'],
+        address: updateData['address'],
+        phone: updateData['phone'],
+        email: updateData['email'],
+      );
       
       if (result['success']) {
         // Reload stores from Firebase
@@ -150,7 +167,7 @@ class StoreProvider with ChangeNotifier {
       _setLoading(true);
       _error = null;
       
-      final result = await _storeService.deleteStore(storeId);
+      final result = await StoreService.deleteStore(storeId);
       
       if (result['success']) {
         // Reload stores from Firebase
@@ -172,14 +189,15 @@ class StoreProvider with ChangeNotifier {
   // Toggle store status
   Future<Map<String, dynamic>> toggleStoreStatus(String storeId) async {
     try {
-      // Get current store status
-      final store = _allStores.firstWhere((s) => s['id'] == storeId);
-      final currentStatus = store['isActive'] ?? true;
-      final newStatus = !currentStatus;
+      // Get current store status - will be used when implementing the API
+      // final store = _allStores.firstWhere((s) => s['id'] == storeId);
+      // final currentStatus = store['isActive'] ?? true;
+      // final newStatus = !currentStatus;
       
-      final result = await _storeService.toggleStoreStatus(storeId, newStatus);
+      // TODO: Implement toggleStoreStatus with Spring Boot API
+      final result = {'success': false, 'message': 'Toggle store status not implemented yet'};
       
-      if (result['success']) {
+      if (result['success'] == true) {
         // Reload stores from Firebase
         await loadStores();
       }
@@ -251,7 +269,7 @@ class StoreProvider with ChangeNotifier {
   // Search stores in Firebase
   Future<List<Map<String, dynamic>>> searchStoresFirebase(String query) async {
     try {
-      return await _storeService.searchStores(query);
+      return await StoreService.searchStores(query);
     } catch (e) {
       print('Error searching stores in Firebase: $e');
       return searchStores(query);
@@ -283,8 +301,6 @@ class StoreProvider with ChangeNotifier {
         aValue ??= ascending ? double.negativeInfinity : double.infinity;
         bValue ??= ascending ? double.negativeInfinity : double.infinity;
         
-        int comparison = ascending ? 1 : -1;
-        
         if (aValue is String && bValue is String) {
           return ascending ? aValue.compareTo(bValue) : bValue.compareTo(aValue);
         } else if (aValue is num && bValue is num) {
@@ -313,7 +329,7 @@ class StoreProvider with ChangeNotifier {
   // Get store statistics
   Future<Map<String, dynamic>> getStoreStats() async {
     try {
-      return await _storeService.getStoreStats();
+      return await StoreService.getStoreStatistics('dummy-store-id');
     } catch (e) {
       print('Error getting store stats: $e');
       return {

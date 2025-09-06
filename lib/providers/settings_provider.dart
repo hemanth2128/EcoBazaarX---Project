@@ -4,7 +4,7 @@ import '../services/settings_service.dart';
 import 'spring_auth_provider.dart';
 
 class SettingsProvider extends ChangeNotifier {
-  final SettingsService _settingsService = SettingsService();
+  // final SettingsService _settingsService = SettingsService(); // All methods are static now
   final SpringAuthProvider _authProvider = SpringAuthProvider();
   // Removed Firebase Auth dependency - using Spring Boot auth now
   
@@ -80,7 +80,7 @@ class SettingsProvider extends ChangeNotifier {
       
       if (isAuthenticated && userId != null) {
         // Initialize Firebase settings for the user
-        await _settingsService.initializeUserSettings(userId);
+        await SettingsService.initializeUserSettings(userId);
         
         // Load settings from Firebase with real-time updates
         _loadSettingsFromFirebase(userId);
@@ -103,20 +103,21 @@ class SettingsProvider extends ChangeNotifier {
   }
 
   void _loadSettingsFromFirebase(String userId) {
-    // Listen to real-time updates from Firebase
-    _settingsService.getUserSettingsStream(userId).listen(
-      (settings) {
-        if (settings != null) {
-          _updateSettingsFromMap(settings);
-          notifyListeners();
-        }
-      },
-      onError: (error) {
-        _errorMessage = 'Failed to load settings: $error';
-        print('Error loading settings from Firebase: $error');
-        notifyListeners();
-      },
-    );
+    // TODO: Implement real-time settings loading with Spring Boot API
+    // For now, just load settings once
+    _loadSettingsOnce(userId);
+  }
+
+  Future<void> _loadSettingsOnce(String userId) async {
+    try {
+      final settings = await SettingsService.getUserSettings(userId);
+      _updateSettingsFromMap(settings);
+      notifyListeners();
+    } catch (error) {
+      _errorMessage = 'Failed to load settings: $error';
+      print('Error loading settings: $error');
+      notifyListeners();
+    }
   }
 
   void _updateSettingsFromMap(Map<String, dynamic> settings) {
@@ -201,7 +202,8 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> _saveSettingsToFirebase(String category, String key, dynamic value) async {
     try {
       if (_authProvider.isAuthenticated && _authProvider.userId != null) {
-        await _settingsService.updateSetting(_authProvider.userId!, category, key, value);
+        // TODO: Implement updateSetting with Spring Boot API
+        // await SettingsService.updateSetting(_authProvider.userId!, category, key, value);
       }
     } catch (e) {
       print('Error saving setting to Firebase: $e');
@@ -368,7 +370,7 @@ class SettingsProvider extends ChangeNotifier {
   void resetToDefaults() async {
     try {
       if (_authProvider.isAuthenticated && _authProvider.userId != null) {
-        await _settingsService.resetToDefaults(_authProvider.userId!);
+        await SettingsService.resetSettingsToDefault(_authProvider.userId!);
       }
       
     _pushNotificationsEnabled = true;
@@ -435,7 +437,7 @@ class SettingsProvider extends ChangeNotifier {
   Future<Map<String, dynamic>> exportSettings() async {
     try {
       if (_authProvider.isAuthenticated && _authProvider.userId != null) {
-        return await _settingsService.exportSettings(_authProvider.userId!);
+        return await SettingsService.exportUserData(_authProvider.userId!);
       } else {
         return {
           'version': '1.0.0',
@@ -457,7 +459,9 @@ class SettingsProvider extends ChangeNotifier {
   Future<bool> importSettings(Map<String, dynamic> data) async {
     try {
       if (_authProvider.isAuthenticated && _authProvider.userId != null) {
-        return await _settingsService.importSettings(_authProvider.userId!, data);
+        // TODO: Implement importSettings with Spring Boot API
+        // return await SettingsService.importSettings(_authProvider.userId!, data);
+        return false; // Import not implemented yet
       } else {
         // Import to SharedPreferences if not authenticated
         return await _importSettingsToSharedPreferences(data);
@@ -558,7 +562,8 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> syncSettings() async {
     try {
       if (_authProvider.isAuthenticated && _authProvider.userId != null) {
-        await _settingsService.syncSettings(_authProvider.userId!);
+        // TODO: Implement syncSettings with Spring Boot API
+        // await SettingsService.syncSettings(_authProvider.userId!);
         print('Settings synced successfully');
       }
     } catch (e) {
@@ -576,7 +581,7 @@ class SettingsProvider extends ChangeNotifier {
   Future<void> refreshSettings() async {
     try {
       if (_authProvider.isAuthenticated && _authProvider.userId != null) {
-        final settings = await _settingsService.getUserSettings(_authProvider.userId!);
+        final settings = await SettingsService.getUserSettings(_authProvider.userId!);
         if (settings != null) {
           _updateSettingsFromMap(settings);
           notifyListeners();

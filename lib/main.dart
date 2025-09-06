@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_core_web/firebase_core_web.dart';
+// import 'package:firebase_core/firebase_core.dart'; // DISABLED - Using Spring Boot Backend
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/home/home_screen.dart';
@@ -23,22 +22,20 @@ import 'config/firebase_config.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize Firebase for web (Firestore only - no Auth)
-  await Firebase.initializeApp(
-    options: FirebaseOptions(
-      apiKey: FirebaseConfig.config['apiKey'] as String,
-      authDomain: FirebaseConfig.config['authDomain'] as String,
-      projectId: FirebaseConfig.config['projectId'] as String,
-      storageBucket: FirebaseConfig.config['storageBucket'] as String,
-      messagingSenderId: FirebaseConfig.config['messagingSenderId'] as String,
-      appId: FirebaseConfig.config['appId'] as String,
-      measurementId: FirebaseConfig.config['measurementId'] as String,
-    ),
-  );
+  // Firebase initialization DISABLED - Using Spring Boot Backend
+  // await Firebase.initializeApp(
+  //   options: FirebaseOptions(
+  //     apiKey: FirebaseConfig.config['apiKey'] as String,
+  //     authDomain: FirebaseConfig.config['authDomain'] as String,
+  //     projectId: FirebaseConfig.config['projectId'] as String,
+  //     storageBucket: FirebaseConfig.config['storageBucket'] as String,
+  //     messagingSenderId: FirebaseConfig.config['messagingSenderId'] as String,
+  //     appId: FirebaseConfig.config['appId'] as String,
+  //     measurementId: FirebaseConfig.config['measurementId'] as String,
+  //   ),
+  // );
   
-  print('Firebase initialized for Firestore only (Auth disabled)');
-  
-  print('EcoBazaarX App starting with Spring Boot backend and Firebase...');
+  print('EcoBazaarX App starting with Spring Boot backend (MySQL database)...');
   
   runApp(const EcoBazaarXApp());
 }

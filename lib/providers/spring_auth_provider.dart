@@ -14,17 +14,8 @@ class SpringAuthProvider extends ChangeNotifier {
   String? _refreshToken;
 
   // Static list to store all registered users (accessible by admin)
-  static final List<Map<String, dynamic>> _allUsers = [
-    // Default admin user
-    {
-      'id': 'admin_1',
-      'name': 'Admin User',
-      'email': 'admin@ecobazaar.com',
-      'role': UserRole.admin,
-      'status': 'Active',
-      'joinDate': DateTime.now().subtract(const Duration(days: 30)).toIso8601String().split('T')[0],
-    },
-  ];
+  // This will be populated from MySQL database via API calls
+  static final List<Map<String, dynamic>> _allUsers = [];
 
   // Getters
   bool get isAuthenticated => _isAuthenticated;
@@ -166,39 +157,25 @@ class SpringAuthProvider extends ChangeNotifier {
       });
 
       if (result['success'] == true) {
-        _jwtToken = result['token'];
-        _refreshToken = result['refreshToken'];
         _userId = result['userId'];
         _userEmail = email;
         _userName = name;
         _userRole = role;
-        _isAuthenticated = true;
+        _isAuthenticated = false; // User needs to login after signup
 
-        // Add to local list for admin access
-        _allUsers.add({
-          'id': _userId,
-          'name': name,
-          'email': email,
-          'role': role,
-          'status': 'Active',
-          'joinDate': DateTime.now().toIso8601String().split('T')[0],
-        });
-
-        // Save to local storage
+        // Save to local storage (no JWT tokens for signup)
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isAuthenticated', true);
+        await prefs.setBool('isAuthenticated', false);
         await prefs.setString('userEmail', email);
         await prefs.setString('userName', name);
         await prefs.setString('userRole', role.toString());
         await prefs.setString('userId', _userId!);
-        await prefs.setString('jwtToken', _jwtToken!);
-        await prefs.setString('refreshToken', _refreshToken!);
 
         notifyListeners();
         
         return {
           'success': true,
-          'message': 'Account created successfully!',
+          'message': 'Registration successful! Please login to continue.',
         };
       } else {
         return {

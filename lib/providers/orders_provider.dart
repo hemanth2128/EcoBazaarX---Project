@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// ignore: depend_on_referenced_packages
+// import 'package:cloud_firestore/cloud_firestore.dart'; // DISABLED - Using Spring Boot Backend
 import '../services/orders_service.dart';
 
 class OrdersProvider extends ChangeNotifier {
@@ -46,8 +47,13 @@ class OrdersProvider extends ChangeNotifier {
   // Load all orders (for admin/shopkeeper)
   Future<void> loadAllOrders() async {
     try {
-      final orders = await OrdersService.getAllOrders();
-      _allOrders = orders;
+      // Since getAllOrders doesn't exist, we'll use getOrdersByStatus for now
+      // This is a temporary solution until the backend API is fully implemented
+      final pendingOrders = await OrdersService.getOrdersByStatus('pending');
+      final completedOrders = await OrdersService.getOrdersByStatus('completed');
+      final cancelledOrders = await OrdersService.getOrdersByStatus('cancelled');
+      
+      _allOrders = [...pendingOrders, ...completedOrders, ...cancelledOrders];
       notifyListeners();
     } catch (e) {
       print('Error loading all orders: $e');
@@ -69,12 +75,9 @@ class OrdersProvider extends ChangeNotifier {
     try {
       final result = await OrdersService.createOrder(
         userId: userId,
-        userEmail: userEmail,
-        userName: userName,
         items: items,
         totalAmount: totalAmount,
-        status: status,
-        deliveryAddress: deliveryAddress,
+        deliveryAddress: deliveryAddress ?? '',
         paymentMethod: paymentMethod,
       );
 
@@ -97,7 +100,10 @@ class OrdersProvider extends ChangeNotifier {
   // Update order status
   Future<Map<String, dynamic>> updateOrderStatus(String orderId, String newStatus) async {
     try {
-      final result = await OrdersService.updateOrderStatus(orderId, newStatus);
+      final result = await OrdersService.updateOrderStatus(
+        orderId: orderId,
+        status: newStatus,
+      );
       
       if (result['success']) {
         // Reload orders after updating
@@ -126,9 +132,9 @@ class OrdersProvider extends ChangeNotifier {
   }
 
   // Get order statistics
-  Future<Map<String, dynamic>> getOrderStatistics() async {
+  Future<Map<String, dynamic>> getOrderStatistics(String userId) async {
     try {
-      return await OrdersService.getOrderStatistics();
+      return await OrdersService.getOrderStatistics(userId);
     } catch (e) {
       print('Error getting order statistics: $e');
       return {
@@ -144,10 +150,9 @@ class OrdersProvider extends ChangeNotifier {
   // Initialize sample orders (for demo purposes)
   Future<void> initializeSampleOrders() async {
     try {
-      await OrdersService.initializeSampleOrders();
-      // Reload orders after initializing samples
-      await loadUserOrders(_userOrders.first['userId'] ?? '');
-      await loadAllOrders();
+      // Since initializeSampleOrders doesn't exist in OrdersService,
+      // we'll skip this functionality for now
+      print('Sample orders initialization not available - backend API not implemented yet');
     } catch (e) {
       print('Error initializing sample orders: $e');
     }
@@ -155,12 +160,46 @@ class OrdersProvider extends ChangeNotifier {
 
   // Helper method to format order status for display
   String getStatusDisplayName(String status) {
-    return OrdersService.getStatusDisplayName(status);
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return 'Pending';
+      case 'confirmed':
+        return 'Confirmed';
+      case 'processing':
+        return 'Processing';
+      case 'shipped':
+        return 'Shipped';
+      case 'delivered':
+        return 'Delivered';
+      case 'cancelled':
+        return 'Cancelled';
+      case 'refunded':
+        return 'Refunded';
+      default:
+        return status;
+    }
   }
 
   // Helper method to get status color
   Color getStatusColor(String status) {
-    return OrdersService.getStatusColor(status);
+    switch (status.toLowerCase()) {
+      case 'pending':
+        return Colors.orange;
+      case 'confirmed':
+        return Colors.blue;
+      case 'processing':
+        return Colors.purple;
+      case 'shipped':
+        return Colors.indigo;
+      case 'delivered':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      case 'refunded':
+        return Colors.grey;
+      default:
+        return Colors.grey;
+    }
   }
 
   // Helper method to parse color from string
@@ -219,9 +258,7 @@ class OrdersProvider extends ChangeNotifier {
         'product': firstItem['name'] ?? 'Unknown Product',
         'status': order['status'] ?? 'Unknown',
         'date': order['createdAt'] != null 
-            ? (order['createdAt'] is Timestamp 
-                ? order['createdAt'].toDate().toString().split(' ')[0]
-                : order['createdAt'].toString().split(' ')[0])
+            ? order['createdAt'].toString().split(' ')[0]
             : 'Unknown',
         'amount': '₹${(order['totalAmount'] ?? 0.0).toStringAsFixed(0)}',
         'color': _parseColor(firstItem['color'] ?? '#B5C7F7'),
@@ -242,9 +279,7 @@ class OrdersProvider extends ChangeNotifier {
         'product': firstItem['name'] ?? 'Unknown Product',
         'status': order['status'] ?? 'Unknown',
         'date': order['createdAt'] != null 
-            ? (order['createdAt'] is Timestamp 
-                ? order['createdAt'].toDate().toString().split(' ')[0]
-                : order['createdAt'].toString().split(' ')[0])
+            ? order['createdAt'].toString().split(' ')[0]
             : 'Unknown',
         'amount': '₹${(order['totalAmount'] ?? 0.0).toStringAsFixed(0)}',
         'color': _parseColor(firstItem['color'] ?? '#B5C7F7'),

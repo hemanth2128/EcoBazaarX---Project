@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart'; // DISABLED - Using Spring Boot Backend
 import '../../providers/spring_auth_provider.dart';
 import '../../providers/store_provider.dart';
 import '../../providers/product_provider.dart';
@@ -52,17 +52,23 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
     final startOfDay = DateTime(today.year, today.month, today.day);
     final endOfDay = startOfDay.add(const Duration(days: 1));
 
-    FirebaseFirestore.instance
-        .collection('orders')
-        .where('orderDate', isGreaterThanOrEqualTo: startOfDay)
-        .where('orderDate', isLessThan: endOfDay)
-        .snapshots()
-        .listen((snapshot) {
-      if (mounted) {
-        setState(() {
-          _ordersToday = snapshot.docs.length;
-        });
-      }
+    // DISABLED - Using Spring Boot Backend
+    // FirebaseFirestore.instance
+    //     .collection('orders')
+    //     .where('orderDate', isGreaterThanOrEqualTo: startOfDay)
+    //     .where('orderDate', isLessThan: endOfDay)
+    //     .snapshots()
+    //     .listen((snapshot) {
+    //   if (mounted) {
+    //     setState(() {
+    //       _ordersToday = snapshot.docs.length;
+    //     });
+    //   }
+    // });
+    
+    // TODO: Implement with Spring Boot API
+    setState(() {
+      _ordersToday = 0; // Placeholder value
     });
   }
 
@@ -607,72 +613,97 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
   }
 
   Widget _buildOrdersList() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('orders')
-          .orderBy('createdAt', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFB5C7F7)),
+    // DISABLED - Using Spring Boot Backend
+    // TODO: Implement with Spring Boot API
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.shopping_cart_outlined,
+            size: 64,
+            color: Colors.grey[400],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Orders will be loaded from Spring Boot backend',
+            style: GoogleFonts.poppins(
+              fontSize: 16,
+              fontWeight: FontWeight.w500,
+              color: Colors.grey[600],
             ),
-          );
-        }
-
-        if (snapshot.hasError) {
-          return Center(
-            child: Text(
-              'Error loading orders: ${snapshot.error}',
-              style: GoogleFonts.poppins(color: Colors.red),
-            ),
-          );
-        }
-
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.shopping_cart_outlined,
-                  size: 64,
-                  color: Colors.grey[400],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No orders yet',
-                  style: GoogleFonts.poppins(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Orders from customers will appear here',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: Colors.grey[500],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final orders = snapshot.data!.docs;
-        return ListView.builder(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          itemCount: orders.length,
-          itemBuilder: (context, index) {
-            final order = orders[index].data() as Map<String, dynamic>;
-            return _buildOrderCard(order);
-          },
-        );
-      },
+          ),
+        ],
+      ),
     );
+    
+    // Original Firestore code (commented out):
+    // return StreamBuilder<QuerySnapshot>(
+    //   stream: FirebaseFirestore.instance
+    //       .collection('orders')
+    //       .orderBy('createdAt', descending: true)
+    //       .snapshots(),
+    //   builder: (context, snapshot) {
+    //     if (snapshot.connectionState == ConnectionState.waiting) {
+    //       return const Center(
+    //         child: CircularProgressIndicator(
+    //           valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFB5C7F7)),
+    //         ),
+    //       );
+    //     }
+    //
+    //     if (snapshot.hasError) {
+    //       return Center(
+    //         child: Text(
+    //           'Error loading orders: ${snapshot.error}',
+    //           style: GoogleFonts.poppins(color: Colors.red),
+    //         ),
+    //       );
+    //     }
+    //
+    //     if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+    //       return Center(
+    //         child: Column(
+    //           mainAxisAlignment: MainAxisAlignment.center,
+    //           children: [
+    //             Icon(
+    //               Icons.shopping_cart_outlined,
+    //               size: 64,
+    //               color: Colors.grey[400],
+    //             ),
+    //             const SizedBox(height: 16),
+    //             Text(
+    //               'No orders yet',
+    //               style: GoogleFonts.poppins(
+    //                 fontSize: 18,
+    //                 fontWeight: FontWeight.w500,
+    //                 color: Colors.grey[600],
+    //               ),
+    //             ),
+    //             const SizedBox(height: 8),
+    //             Text(
+    //               'Orders from customers will appear here',
+    //               style: GoogleFonts.poppins(
+    //                 fontSize: 14,
+    //                 color: Colors.grey[500],
+    //               ),
+    //             ),
+    //           ],
+    //         ),
+    //       );
+    //     }
+    //
+    //     final orders = snapshot.data!.docs;
+    //     return ListView.builder(
+    //       padding: const EdgeInsets.symmetric(horizontal: 24),
+    //       itemCount: orders.length,
+    //       itemBuilder: (context, index) {
+    //         final order = orders[index].data() as Map<String, dynamic>;
+    //         return _buildOrderCard(order);
+    //       },
+    //     );
+    //   },
+    // );
   }
 
   Widget _buildOrderCard(Map<String, dynamic> order) {
@@ -682,7 +713,7 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
     final totalAmount = order['finalAmount'] ?? 0.0;
     final orderStatus = order['orderStatus'] ?? 'pending';
     final orderDate = order['orderDate'] != null 
-        ? (order['orderDate'] as Timestamp).toDate()
+        ? DateTime.parse(order['orderDate'].toString()) // DISABLED - Using Spring Boot Backend
         : DateTime.now();
     final items = order['items'] as List<dynamic>? ?? [];
 
@@ -861,13 +892,17 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
 
   void _updateOrderStatus(String orderId, String newStatus) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('orders')
-          .doc(orderId)
-          .update({
-        'orderStatus': newStatus,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      // DISABLED - Using Spring Boot Backend
+      // await FirebaseFirestore.instance
+      //     .collection('orders')
+      //     .doc(orderId)
+      //     .update({
+      //   'orderStatus': newStatus,
+      //   'updatedAt': FieldValue.serverTimestamp(),
+      // });
+      
+      // TODO: Implement with Spring Boot API
+      print('Order status update will be implemented with Spring Boot backend');
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -965,13 +1000,17 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
 
   Future<void> _updateProductStock(String productId, int newStock) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('products')
-          .doc(productId)
-          .update({
-        'quantity': newStock,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      // DISABLED - Using Spring Boot Backend
+      // await FirebaseFirestore.instance
+      //     .collection('products')
+      //     .doc(productId)
+      //     .update({
+      //   'quantity': newStock,
+      //   'updatedAt': FieldValue.serverTimestamp(),
+      // });
+      
+      // TODO: Implement with Spring Boot API
+      print('Stock update will be implemented with Spring Boot backend');
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2278,7 +2317,8 @@ class _ShopkeeperDashboardScreenState extends State<ShopkeeperDashboardScreen>
                     'ownerPhone': ownerPhoneController.text.trim(),
                     'address': addressController.text.trim(),
                     'isActive': isActive,
-                    'updatedAt': FieldValue.serverTimestamp(),
+                    // 'updatedAt': FieldValue.serverTimestamp(), // DISABLED - Using Spring Boot Backend
+                    'updatedAt': DateTime.now().toIso8601String(),
                   };
                   
                   final result = await storeProvider.updateStore(store['id'], updateData);

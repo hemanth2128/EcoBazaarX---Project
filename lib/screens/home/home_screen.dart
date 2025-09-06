@@ -4923,13 +4923,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                                   userId: currentUserId,
                                   productId: product['id'],
                                   productName: product['name'] ?? 'Unknown Product',
-                                  productDescription: product['description'] ?? 'Eco-friendly product',
-                                  productPrice: product['price'] ?? 0.0,
-                                  productCategory: product['category'] ?? 'General',
-                                  productColor: product['color'] ?? '#B5C7F7',
-                                  productIcon: product['icon'] ?? 'eco_rounded',
-                                  carbonFootprint: product['carbonFootprint'] ?? 0.0,
-                                  productImage: '',
+                                  price: product['price'] ?? 0.0,
+                                  imageUrl: product['imageUrl'] ?? '',
+                                  category: product['category'] ?? 'General',
                                 );
                                 if (success) {
                                   ScaffoldMessenger.of(context).showSnackBar(

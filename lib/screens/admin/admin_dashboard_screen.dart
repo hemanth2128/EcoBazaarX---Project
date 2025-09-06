@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:cloud_firestore/cloud_firestore.dart'; // DISABLED - Using Spring Boot Backend
 import 'dart:async';
 import 'dart:math';
 import '../../providers/spring_auth_provider.dart';
@@ -56,10 +56,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     final today = DateTime.now();
     return _users.where((user) {
       try {
-        final joinDate = DateTime.parse(user['joinDate']);
-        return joinDate.year == today.year && 
-               joinDate.month == today.month && 
-               joinDate.day == today.day;
+      final joinDate = DateTime.parse(user['joinDate']);
+      return joinDate.year == today.year && 
+             joinDate.month == today.month && 
+             joinDate.day == today.day;
       } catch (e) {
         return false;
       }
@@ -106,15 +106,18 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     });
     
     try {
-      final QuerySnapshot snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .orderBy('createdAt', descending: true)
-          .get();
+      // TODO: Replace with Spring Boot API call
+      // final QuerySnapshot snapshot = await FirebaseFirestore.instance
+      //     .collection('users')
+      //     .orderBy('createdAt', descending: true)
+      //     .get();
       
-      _users = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
+      // Placeholder data for now
+      final List<Map<String, dynamic>> usersData = [];
+      
+      _users = usersData.map((data) {
         return {
-          'id': doc.id,
+          'id': data['id'] ?? 'unknown',
           'name': data['name'] ?? 'Unknown',
           'email': data['email'] ?? '',
           'role': _getRoleDisplayName(data['role']),
@@ -122,7 +125,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
           'joinDate': data['joinDate']?.toString() ?? DateTime.now().toIso8601String().split('T')[0],
           'createdAt': data['createdAt'],
         };
-      }).toList();
+     }).toList();
       
       setState(() {
         _isLoadingUsers = false;
@@ -150,7 +153,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
     } catch (e) {
       print('Error initializing products: $e');
     }
-  }
+   }
   
   // Filter variables
   String _currentFilter = 'All';
@@ -1149,7 +1152,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   ),
                 ),
-              ),
+          ),
         ],
       ),
     );
@@ -2970,14 +2973,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
   // Helper method to convert role (string or UserRole) to display name
   String _getRoleDisplayName(dynamic role) {
     if (role is UserRole) {
-      switch (role) {
-        case UserRole.customer:
-          return 'Customer';
-        case UserRole.shopkeeper:
-          return 'Shopkeeper';
-        case UserRole.admin:
-          return 'Admin';
-      }
+    switch (role) {
+      case UserRole.customer:
+        return 'Customer';
+      case UserRole.shopkeeper:
+        return 'Shopkeeper';
+      case UserRole.admin:
+        return 'Admin';
+    }
     } else if (role is String) {
       switch (role.toLowerCase()) {
         case 'customer':
@@ -6419,7 +6422,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen>
                     'ownerPhone': ownerPhoneController.text.trim(),
                     'address': addressController.text.trim(),
                     'isActive': isActive,
-                    'updatedAt': FieldValue.serverTimestamp(),
+                    'updatedAt': DateTime.now().toIso8601String(),
                   };
                   
                   final result = await storeProvider.updateStore(store['id'], updateData);
@@ -9054,33 +9057,33 @@ class _PastelActionCard extends StatelessWidget {
                   print('Products in category "$category": ${categoryProducts.length}');
                   
                   return categoryProducts.isEmpty
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.inventory_2_outlined,
-                                size: 64,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No products in this category',
-                                style: GoogleFonts.poppins(
-                                  fontSize: 16,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
+                  ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
                           ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          itemCount: categoryProducts.length,
-                          itemBuilder: (context, index) {
-                            final product = categoryProducts[index];
+                          const SizedBox(height: 16),
+                          Text(
+                            'No products in this category',
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      itemCount: categoryProducts.length,
+                      itemBuilder: (context, index) {
+                        final product = categoryProducts[index];
                             print('Rendering product $index: ${product['name']}');
-                            return Container(
+                        return Container(
                           margin: const EdgeInsets.only(bottom: 12),
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -9146,8 +9149,8 @@ class _PastelActionCard extends StatelessWidget {
                             );
                           },
                         );
-                },
-              ),
+                      },
+                    ),
             ),
           ],
         ),
