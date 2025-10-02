@@ -1,0 +1,26 @@
+[
+  {
+    "id": "payment1",
+    "userId": "user1",
+    "orderId": "order1",
+    "amount": 45.98,
+    "currency": "USD",
+    "paymentMethod": "Credit Card",
+    "status": "COMPLETED",
+    "transactionId": "txn_123456789",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "payment2",
+    "userId": "user2",
+    "orderId": "order2",
+    "amount": 19.99,
+    "currency": "USD",
+    "paymentMethod": "PayPal",
+    "status": "COMPLETED",
+    "transactionId": "txn_987654321",
+    "createdAt": "2024-01-02T00:00:00Z",
+    "updatedAt": "2024-01-02T00:00:00Z"
+  }
+]

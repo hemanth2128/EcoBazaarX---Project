@@ -1,0 +1,28 @@
+[
+  {
+    "id": "product1",
+    "name": "Eco-Friendly Water Bottle",
+    "description": "Reusable stainless steel water bottle",
+    "price": 25.99,
+    "category": "Eco Products",
+    "stock": 100,
+    "imageUrl": "https://example.com/bottle.jpg",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z",
+    "isActive": true,
+    "storeId": "store1"
+  },
+  {
+    "id": "product2",
+    "name": "Organic Cotton T-Shirt",
+    "description": "100% organic cotton t-shirt",
+    "price": 19.99,
+    "category": "Clothing",
+    "stock": 50,
+    "imageUrl": "https://example.com/tshirt.jpg",
+    "createdAt": "2024-01-02T00:00:00Z",
+    "updatedAt": "2024-01-02T00:00:00Z",
+    "isActive": true,
+    "storeId": "store1"
+  }
+]

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "store1",
+    "name": "EcoBazaar Store",
+    "description": "Your one-stop shop for eco-friendly products",
+    "address": "123 Green Street, Eco City",
+    "phone": "+1234567890",
+    "email": "store@ecobazaar.com",
+    "ownerId": "user1",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z",
+    "isActive": true,
+    "rating": 4.5
+  }
+]

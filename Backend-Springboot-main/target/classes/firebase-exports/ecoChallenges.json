@@ -1,0 +1,24 @@
+[
+  {
+    "id": "challenge1",
+    "title": "30-Day Plastic Free Challenge",
+    "description": "Go 30 days without using single-use plastic",
+    "points": 100,
+    "duration": 30,
+    "category": "Sustainability",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z",
+    "isActive": true
+  },
+  {
+    "id": "challenge2",
+    "title": "Energy Saving Challenge",
+    "description": "Reduce your energy consumption by 20%",
+    "points": 75,
+    "duration": 14,
+    "category": "Energy",
+    "createdAt": "2024-01-02T00:00:00Z",
+    "updatedAt": "2024-01-02T00:00:00Z",
+    "isActive": true
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "wishlist1",
+    "userId": "user1",
+    "name": "My Favorites",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z",
+    "isActive": true
+  },
+  {
+    "id": "wishlist2",
+    "userId": "user2",
+    "name": "Eco Products",
+    "createdAt": "2024-01-02T00:00:00Z",
+    "updatedAt": "2024-01-02T00:00:00Z",
+    "isActive": true
+  }
+]

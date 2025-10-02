@@ -1,0 +1,23 @@
+[
+  {
+    "id": "order1",
+    "userId": "user1",
+    "totalAmount": 45.98,
+    "status": "DELIVERED",
+    "shippingAddress": "123 Main St, City, State",
+    "paymentStatus": "PAID",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z",
+    "deliveredAt": "2024-01-03T00:00:00Z"
+  },
+  {
+    "id": "order2",
+    "userId": "user2",
+    "totalAmount": 19.99,
+    "status": "SHIPPED",
+    "shippingAddress": "456 Oak Ave, City, State",
+    "paymentStatus": "PAID",
+    "createdAt": "2024-01-02T00:00:00Z",
+    "updatedAt": "2024-01-02T00:00:00Z"
+  }
+]

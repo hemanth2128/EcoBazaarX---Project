@@ -1,0 +1,14 @@
+[
+  {
+    "id": "wishlistItem1",
+    "wishlistId": "wishlist1",
+    "productId": "product1",
+    "addedAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "wishlistItem2",
+    "wishlistId": "wishlist1",
+    "productId": "product2",
+    "addedAt": "2024-01-02T00:00:00Z"
+  }
+]

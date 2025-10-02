@@ -1,0 +1,24 @@
+[
+  {
+    "id": "settings1",
+    "userId": "user1",
+    "notifications": true,
+    "emailNotifications": true,
+    "smsNotifications": false,
+    "language": "en",
+    "theme": "light",
+    "createdAt": "2024-01-01T00:00:00Z",
+    "updatedAt": "2024-01-01T00:00:00Z"
+  },
+  {
+    "id": "settings2",
+    "userId": "user2",
+    "notifications": true,
+    "emailNotifications": true,
+    "smsNotifications": true,
+    "language": "en",
+    "theme": "dark",
+    "createdAt": "2024-01-02T00:00:00Z",
+    "updatedAt": "2024-01-02T00:00:00Z"
+  }
+]
